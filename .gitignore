@@ -21,6 +21,9 @@
 *.rtf
 *.epub
 
+# Local social-media drafts and screenshots
+/linkedin-assets/
+
 # Python artifacts
 __pycache__/
 *.py[cod]

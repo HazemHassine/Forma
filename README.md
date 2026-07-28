@@ -14,6 +14,62 @@ building cover letters, researching companies, and tracking job applications.
 - Standalone, source-backed company research reports
 - Persistent local SQLite storage
 
+## Screenshots
+
+All screenshots below use fictional demonstration data.
+
+<p align="center">
+  <a href="docs/screenshots/00-forma-architecture.png">
+    <img src="docs/screenshots/00-forma-architecture.png" alt="Forma architecture: a human-reviewed LangGraph workflow backed by SQLite" width="100%">
+  </a>
+  <br>
+  <sub>Bounded agentic workflow, visible human decisions, and durable local state.</sub>
+</p>
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/01-agentic-analysis.png">
+        <img src="docs/screenshots/01-agentic-analysis.png" alt="Forma cover-letter workflow showing inspectable role analysis">
+      </a>
+      <br>
+      <sub>Inspect requirements, evidence, gaps, strategy, and uncertainties before research begins.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/02-research-and-clarify.png">
+        <img src="docs/screenshots/02-research-and-clarify.png" alt="Forma cover-letter workflow showing sourced research and clarification">
+      </a>
+      <br>
+      <sub>Approve sourced company context and answer only the questions that improve the draft.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/03-company-researcher.png">
+        <img src="docs/screenshots/03-company-researcher.png" alt="Forma company researcher with a structured source-backed report">
+      </a>
+      <br>
+      <sub>Structured company research with retained sources, confidence, risks, and role relevance.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/04-application-tracker.png">
+        <img src="docs/screenshots/04-application-tracker.png" alt="Forma application tracker linked to resume versions">
+      </a>
+      <br>
+      <sub>Track application status and the exact résumé version submitted for each role.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" valign="top">
+      <a href="docs/screenshots/05-resume-versions.png">
+        <img src="docs/screenshots/05-resume-versions.png" alt="Forma resume-version library with independent tailored versions">
+      </a>
+      <br>
+      <sub>Keep the master résumé protected while creating independent tailored versions and recoverable drafts.</sub>
+    </td>
+  </tr>
+</table>
+
 ## Privacy model
 
 The application is designed for local use. Résumés, applications, cover
@@ -148,6 +204,8 @@ npm run build
 ├── frontend/
 │   ├── src/
 │   └── tests/
+├── docs/
+│   └── screenshots/         # Public fictional demo screenshots
 ├── local-data/              # Private and ignored
 └── docker-compose.yml
 ```
