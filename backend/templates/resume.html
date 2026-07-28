@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,400;0,700;1,400;1,700&family=Open+Sans:wght@400;600;700&display=swap');
+
+        @page {
+            size: A4;
+            margin: 0pt 20pt;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+            line-height: 1.3;
+        }
+
+        table.main-layout {
+            width: 100%;
+            border-collapse: collapse;
+            border-spacing: 0;
+        }
+
+        table.main-layout td {
+            vertical-align: top;
+            padding: 0;
+        }
+
+        /* Header row */
+        tr.header-row td {
+            padding-top: 18pt;
+        }
+
+        td.header-left {
+            width: 66%;
+        }
+
+        td.header-right {
+            width: 34%;
+            text-align: right;
+            padding-top: 18pt;
+        }
+
+        .header-left-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .photo-wrapper {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            flex-shrink: 0;
+            margin-right: 16pt;
+        }
+
+        .profile-photo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center 15%;
+            transform: scale(2.0);
+            display: block;
+        }
+
+        .name-title-wrapper {
+            flex-grow: 1;
+            text-align: center;
+        }
+
+        .header-name {
+            font-family: 'Merriweather', serif;
+            font-size: 20pt;
+            font-weight: 700;
+            color: #000000;
+            margin: 0;
+        }
+
+        .header-subtitle {
+            font-family: 'Merriweather', serif;
+            font-size: 8pt;
+            font-weight: 700;
+            color: #000000;
+            margin: 0;
+            padding-top: 4pt;
+        }
+
+        .contact-info {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 9pt;
+            line-height: 1.6;
+        }
+
+        .contact-info a {
+            font-family: 'Open Sans', sans-serif;
+            font-weight: 700;
+            color: #1155cc;
+            text-decoration: underline;
+        }
+
+        .contact-info .label {
+            font-weight: 400;
+            color: #444444;
+        }
+
+        /* Content columns */
+        td.content-left {
+            width: 66%;
+            padding-right: 16pt;
+        }
+
+        td.content-right {
+            width: 34%;
+            padding-left: 8pt;
+        }
+
+        /* Section headers */
+        h1.section-header {
+            font-family: 'Open Sans', sans-serif;
+            font-size: 10pt;
+            font-weight: 700;
+            color: #1f4e79;
+            text-transform: uppercase;
+            padding-top: 12pt;
+            padding-bottom: 4pt;
+            margin: 0 16pt 6pt 0;
+            border-bottom: 1.5pt solid #1f4e79;
+        }
+
+        h1.section-header.first-section {
+            padding-top: 8pt;
+        }
+
+        /* Entry titles */
+        h2.entry-title {
+            font-family: 'Merriweather', serif;
+            font-size: 10pt;
+            font-weight: 700;
+            color: #000000;
+            margin: 0;
+            padding-top: 6pt;
+        }
+
+        .entry-subtitle {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            font-weight: 700;
+            color: #000000;
+            margin: 0;
+        }
+
+        .entry-dates {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #808080;
+            font-style: italic;
+            margin: 0;
+            padding-top: 1pt;
+        }
+
+        .entry-details {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+            margin: 0;
+            padding-top: 2pt;
+        }
+
+        .entry-description {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+            font-style: italic;
+            margin: 0;
+            padding-top: 2pt;
+        }
+
+        .entry-stack {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+            margin: 0;
+            padding-top: 2pt;
+        }
+
+        .entry-extra {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+            margin: 0;
+            padding-top: 1pt;
+        }
+
+        /* Bullet lists */
+        ul.entry-bullets {
+            margin: 4pt 0 0 0;
+            padding-left: 18pt;
+            list-style-type: disc;
+        }
+
+        ul.entry-bullets li {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+            line-height: 1.3;
+            padding-bottom: 2pt;
+        }
+
+        /* Right column skills */
+        .skill-category-name {
+            font-family: 'Merriweather', serif;
+            font-size: 10pt;
+            font-weight: 700;
+            color: #000000;
+            margin: 0;
+            padding-top: 6pt;
+        }
+
+        ul.skill-items {
+            margin: 2pt 0 0 0;
+            padding-left: 16pt;
+            list-style-type: disc;
+        }
+
+        ul.skill-items li {
+            font-family: 'Merriweather', serif;
+            font-size: 10pt;
+            color: #444444;
+            line-height: 1.3;
+            padding-bottom: 1pt;
+        }
+
+        /* Certificates */
+        .certificate-entry {
+            padding-top: 4pt;
+        }
+
+        .certificate-name {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            font-weight: 700;
+            color: #000000;
+        }
+
+        .certificate-issuer {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+        }
+
+        /* Languages */
+        ul.languages-list {
+            margin: 4pt 0 0 0;
+            padding-left: 16pt;
+            list-style-type: disc;
+        }
+
+        ul.languages-list li {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+            line-height: 1.3;
+            padding-bottom: 1pt;
+        }
+
+        /* References */
+        .references-text {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+            padding-top: 4pt;
+        }
+
+        /* About me text */
+        .about-me-text {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+            line-height: 1.3;
+        }
+
+        .project-type {
+            font-style: italic;
+            font-weight: 400;
+        }
+
+        .entry-location {
+            font-weight: 400;
+        }
+
+        /* Research focus */
+        .research-focus {
+            font-family: 'Merriweather', serif;
+            font-size: 9pt;
+            color: #444444;
+            font-style: italic;
+            padding-top: 2pt;
+        }
+    </style>
+</head>
+<body>
+    <table class="main-layout">
+        <!-- HEADER ROW -->
+        <tr class="header-row">
+            <td class="header-left">
+                <div class="header-left-container">
+                    {% if photo_uri %}
+                    <div class="photo-wrapper">
+                        <img src="{{ photo_uri }}" class="profile-photo" alt="Profile Photo" />
+                    </div>
+                    {% endif %}
+                    <div class="name-title-wrapper">
+                        <p class="header-name">{{ resume.personal_info.name }}</p>
+                        <p class="header-subtitle">{{ resume.personal_info.title }}</p>
+                    </div>
+                </div>
+            </td>
+            <td class="header-right">
+                <div class="contact-info">
+                    <div>{{ resume.personal_info.address }}</div>
+                    <div>{{ resume.personal_info.phone }}</div>
+                    <div><a href="mailto:{{ resume.personal_info.email }}">{{ resume.personal_info.email }}</a></div>
+                    <div><a href="https://{{ resume.personal_info.github }}">{{ resume.personal_info.github }}</a></div>
+                    <div><a href="https://{{ resume.personal_info.linkedin }}">{{ resume.personal_info.linkedin }}</a></div>
+                </div>
+            </td>
+        </tr>
+
+        <!-- CONTENT ROW -->
+        <tr>
+            <td class="content-left">
+                <!-- ABOUT ME -->
+                <h1 class="section-header first-section">About Me</h1>
+                <p class="about-me-text">{{ resume.about_me }}</p>
+
+                <!-- EDUCATION -->
+                <h1 class="section-header">Education</h1>
+                {% for edu in resume.education %}
+                <div style="padding-bottom: 6pt;">
+                    <h2 class="entry-title">{{ edu.institution }}, <span class="entry-location">{{ edu.location }}</span></h2>
+                    <p class="entry-subtitle">{{ edu.degree }}</p>
+                    <p class="entry-dates">{{ edu.dates }}</p>
+                    {% if edu.details %}
+                    <p class="entry-details">{{ edu.details }}</p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+
+                <!-- WORK EXPERIENCE -->
+                <h1 class="section-header">Work Experience</h1>
+                {% for job in resume.work_experience %}
+                <div style="padding-bottom: 6pt;">
+                    <h2 class="entry-title">{{ job.company }}, <span class="entry-location">{{ job.location }}</span></h2>
+                    <p class="entry-subtitle">{{ job.role }}</p>
+                    <p class="entry-dates">{{ job.dates }}</p>
+                    <ul class="entry-bullets">
+                        {% for bullet in job.bullets %}
+                        <li>{{ bullet }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+
+                <!-- PROJECTS -->
+                <h1 class="section-header">Projects</h1>
+                {% for project in resume.projects %}
+                <div style="padding-bottom: 6pt;">
+                    <h2 class="entry-title">{{ project.name }} <span class="project-type">| {{ project.type }}</span></h2>
+                    <p class="entry-description">{{ project.description }}</p>
+                    <p class="entry-stack"><strong>Stack:</strong> {{ project.stack }}</p>
+                    {% if project.extra_info %}
+                    <p class="entry-extra">{{ project.extra_info }}</p>
+                    {% endif %}
+                    <ul class="entry-bullets">
+                        {% for bullet in project.bullets %}
+                        <li>{{ bullet }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+
+                <!-- RESEARCH -->
+                <h1 class="section-header">Research</h1>
+                {% for entry in resume.research %}
+                <div style="padding-bottom: 6pt;">
+                    <h2 class="entry-title">&ldquo;{{ entry.title }}&rdquo;</h2>
+                    <p class="entry-subtitle">{{ entry.institution }}, <span class="entry-location">{{ entry.location }}</span></p>
+                    <p class="entry-dates">{{ entry.date }}</p>
+                    <p class="entry-details">{{ entry.description }}</p>
+                    <p class="research-focus"><strong>Focus:</strong> {{ entry.focus }}</p>
+                </div>
+                {% endfor %}
+            </td>
+
+            <td class="content-right">
+                <!-- SKILLS -->
+                <h1 class="section-header first-section">Skills</h1>
+                {% for skill in resume.skills %}
+                <div>
+                    <p class="skill-category-name">{{ skill.category }}</p>
+                    <ul class="skill-items">
+                        {% for item in skill["items"] %}
+                        <li>{{ item }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endfor %}
+
+                <!-- LANGUAGES -->
+                <h1 class="section-header">Languages</h1>
+                <ul class="languages-list">
+                    {% for lang in resume.languages %}
+                    <li><strong>{{ lang.language }}</strong> ({{ lang.level }})</li>
+                    {% endfor %}
+                </ul>
+
+                <!-- CERTIFICATES -->
+                <h1 class="section-header">Certificates</h1>
+                {% for cert in resume.certificates %}
+                <div class="certificate-entry">
+                    <p class="certificate-name">{{ cert.name }}</p>
+                    <p class="certificate-issuer">{{ cert.issuer }}</p>
+                </div>
+                {% endfor %}
+
+                <!-- REFERENCES -->
+                <h1 class="section-header">References</h1>
+                <p class="references-text">{{ resume.references }}</p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

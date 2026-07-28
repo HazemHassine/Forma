@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;700&family=Rubik:wght@400&display=swap');
+    @page { size: A4; margin: 50pt 56pt 35pt; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #111;
+      font-family: "League Spartan", "Arial", sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.42;
+    }
+    .name {
+      margin: 0;
+      font-family: "Rubik", "Arial", sans-serif;
+      font-size: 26pt;
+      font-weight: 400;
+      letter-spacing: .2pt;
+      text-transform: uppercase;
+      line-height: 1.05;
+    }
+    .subtitle { margin: 7pt 0 14pt; font-size: 12pt; letter-spacing: .1pt; }
+    .rules { border-top: .75pt solid #111; border-bottom: 1.35pt solid #111; height: 6pt; }
+    .contact { text-align: right; margin-top: 12pt; line-height: 1.55; }
+    .contact a { color: #00a4bd; text-decoration: underline; }
+    .recipient-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-top: 10pt;
+      line-height: 1.2;
+    }
+    .recipient strong { font-weight: 700; }
+    .date { text-align: right; white-space: nowrap; }
+    .subject { margin: 22pt 0 13pt; font-weight: 700; font-size: 11pt; }
+    .body p {
+      margin: 0 0 12pt;
+      text-align: justify;
+      hyphens: none;
+    }
+    .closing { margin-top: 16pt; line-height: 1.25; }
+    .closing strong { display: block; }
+    .signature {
+      display: block;
+      width: 108pt;
+      height: 82pt;
+      object-fit: contain;
+      object-position: left top;
+      margin: 8pt 0 0 8pt;
+      mix-blend-mode: multiply;
+    }
+  </style>
+</head>
+<body>
+  <h1 class="name">{{ personal.name }}</h1>
+  <div class="subtitle">{{ subtitle }}</div>
+  <div class="rules"></div>
+
+  <div class="contact">
+    <div>{{ personal.phone }}</div>
+    <div><a href="mailto:{{ personal.email }}">{{ personal.email }}</a></div>
+    <div>{{ personal.address }}</div>
+  </div>
+
+  <div class="recipient-row">
+    <div class="recipient">{{ letter.recipient }}<br><strong>{{ letter.company }}</strong></div>
+    <div class="date">{{ letter.date }}</div>
+  </div>
+
+  <div class="subject">{{ letter.subject }}</div>
+  <div class="body">
+    {% for paragraph in letter.paragraphs %}<p>{{ paragraph }}</p>{% endfor %}
+  </div>
+
+  <div class="closing">
+    {{ letter.sign_off }}
+    <strong>{{ personal.name }}</strong>
+    {% if signature_uri %}
+    <img class="signature" src="{{ signature_uri }}" alt="">
+    {% endif %}
+  </div>
+</body>
+</html>

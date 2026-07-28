@@ -1,0 +1,25 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      CV_PERSONALIZER_DATA_DIR: /app/data
+    volumes:
+      - ./backend:/app
+      - ./local-data:/app/data
+    env_file:
+      - path: ./backend/.env
+        required: false
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+    depends_on:
+      - backend
+    restart: unless-stopped
