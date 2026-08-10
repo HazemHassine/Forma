@@ -3,7 +3,7 @@ import { Sparkles } from 'lucide-react';
 import { aiApi } from '../api';
 import Modal from './Modal';
 import Button from './Button';
-import { useToast } from '../App';
+import { useAIProvider, useToast } from '../App';
 import './AISuggest.css';
 
 export default function AISuggest({ sectionType, currentContent, onAccept }) {
@@ -12,6 +12,7 @@ export default function AISuggest({ sectionType, currentContent, onAccept }) {
   const [suggestion, setSuggestion] = useState('');
   const [loading, setLoading] = useState(false);
   const addToast = useToast();
+  const { aiProvider } = useAIProvider();
 
   const handleOpen = () => {
     setSuggestion('');
@@ -22,7 +23,7 @@ export default function AISuggest({ sectionType, currentContent, onAccept }) {
     setLoading(true);
     setSuggestion('');
     try {
-      const result = await aiApi.suggest({
+      const result = await aiApi.suggest(aiProvider, {
         section_type: sectionType,
         current_content: typeof currentContent === 'string' ? currentContent : JSON.stringify(currentContent),
         job_description: jobDescription || undefined,
@@ -49,7 +50,7 @@ export default function AISuggest({ sectionType, currentContent, onAccept }) {
       <Modal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        title="AI Suggestion"
+        title={`${aiProvider === 'chatgpt' ? 'ChatGPT' : 'Gemini'} suggestion`}
         wide
         footer={
           <>

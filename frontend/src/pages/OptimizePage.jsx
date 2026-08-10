@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { resumeApi, aiApi } from '../api';
-import { useToast } from '../App';
+import { useAIProvider, useToast } from '../App';
 import { useNavigate } from 'react-router-dom';
 import { Target, Sparkles, Check, X, Loader, MessageSquare, Send, ChevronRight, FileText, ArrowRight, ShieldCheck, Save, Clock3 } from 'lucide-react';
 import Button from '../components/Button';
@@ -107,6 +107,7 @@ function DiffSectionCard({
 // --- Main Page ---
 export default function OptimizePage() {
   const addToast = useToast();
+  const { aiProvider } = useAIProvider();
   const navigate = useNavigate();
 
   const [versions, setVersions] = useState([]);
@@ -171,7 +172,7 @@ export default function OptimizePage() {
 
     setLoading(true);
     try {
-      const data = await aiApi.optimize(selectedVersionId, jobDescription, {
+      const data = await aiApi.optimize(aiProvider, selectedVersionId, jobDescription, {
         targetRole,
         company,
         instructions,
@@ -263,7 +264,7 @@ export default function OptimizePage() {
       let contentString = currentContent;
       if (Array.isArray(currentContent)) contentString = currentContent.join('\n');
 
-      const response = await aiApi.suggest({
+      const response = await aiApi.suggest(aiProvider, {
         section_type: sectionType,
         current_content: contentString,
         job_description: jobDescCache,
@@ -456,7 +457,7 @@ export default function OptimizePage() {
     <div className="optimize-page">
       <div className="optimize-header">
         <div className="optimize-header-text">
-          <div className="optimize-kicker"><Sparkles size={14} /> AI tailoring workspace</div>
+          <div className="optimize-kicker"><Sparkles size={14} /> {aiProvider === 'chatgpt' ? 'ChatGPT' : 'Gemini'} tailoring workspace</div>
           <h1><Target size={24} /> Turn a job post into a focused CV</h1>
           <p>Choose a trusted source, add the role context, then review every evidence-backed change before saving a new version.</p>
         </div>

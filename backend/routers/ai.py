@@ -1,14 +1,21 @@
 import json
 from fastapi import APIRouter, HTTPException
-from models import AISuggestRequest, AISuggestResponse, OptimizeRequest, OptimizeResponse, ResumeData
+from models import (
+    AIProvider,
+    AISuggestRequest,
+    AISuggestResponse,
+    OptimizeRequest,
+    OptimizeResponse,
+    ResumeData,
+)
 from ai_helper import suggest_improvement, optimize_resume
 from database import get_db
 
 router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
-@router.post("/suggest", response_model=AISuggestResponse)
-def suggest(request: AISuggestRequest):
+@router.post("/{provider}/suggest", response_model=AISuggestResponse)
+def suggest(provider: AIProvider, request: AISuggestRequest):
     """Get AI-powered improvement suggestions for a resume section."""
     try:
         suggestion = suggest_improvement(
@@ -16,6 +23,7 @@ def suggest(request: AISuggestRequest):
             current_content=request.current_content,
             job_description=request.job_description,
             feedback=request.feedback,
+            provider=provider.value,
         )
         return AISuggestResponse(suggestion=suggestion)
     except ValueError as e:
@@ -27,8 +35,8 @@ def suggest(request: AISuggestRequest):
         )
 
 
-@router.post("/optimize", response_model=OptimizeResponse)
-def optimize(request: OptimizeRequest):
+@router.post("/{provider}/optimize", response_model=OptimizeResponse)
+def optimize(provider: AIProvider, request: OptimizeRequest):
     """Optimize an entire resume for a specific job description."""
     try:
         # Load the resume from the database
@@ -59,6 +67,7 @@ def optimize(request: OptimizeRequest):
             target_role=request.target_role,
             company=request.company,
             instructions=request.instructions,
+            provider=provider.value,
         )
 
         # Validate optimized data with Pydantic

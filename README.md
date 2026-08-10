@@ -102,7 +102,8 @@ maintainer's résumé or contact information.
    cp backend/.env.example backend/.env
    ```
 
-2. Add whichever API keys you want to use. AI features are optional.
+2. Add the API key for each AI provider you want to select. AI features
+   are optional.
 
 3. Start the application:
 
@@ -152,13 +153,19 @@ Copy `backend/.env.example` to `backend/.env` and configure:
 
 ```dotenv
 GEMINI_API_KEY=your_api_key_here
+GEMINI_MODEL=gemini-3.5-flash
+GEMINI_COVER_LETTER_MODEL=gemini-3.5-flash
+GEMINI_COMPANY_RESEARCH_MODEL=gemini-3.5-flash
 OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_RESUME_MODEL=gpt-5.6-sol
+OPENAI_COVER_LETTER_MODEL=gpt-5.6-sol
 OPENAI_COMPANY_RESEARCH_MODEL=gpt-5.6-sol
 ```
 
-LangChain's Gemini integration powers résumé suggestions and tailoring.
-LangGraph orchestrates the OpenAI cover-letter and company-research workflows,
-using LangChain's Responses API integration, structured output, and web search.
+Choose Gemini or ChatGPT from the **AI provider** selector in the sidebar. The
+selection is saved in the browser and applies to résumé suggestions, tailoring,
+cover letters, and company research. LangGraph orchestrates structured outputs
+and provider-native web search for both providers.
 
 ## Backing up local data
 

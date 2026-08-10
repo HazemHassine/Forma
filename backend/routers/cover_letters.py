@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from cover_letter_pdf import cover_letter_page_count, generate_cover_letter_pdf
 from database import get_db
 from models import (
+    AIProvider,
     CompanyResearch,
     CoverLetter,
     CoverLetterAnalysis,
@@ -70,8 +71,11 @@ def list_cover_letters():
     return [_serialize(row) for row in rows]
 
 
-@router.post("/analyze", response_model=CoverLetterAnalysis)
-def analyze_cover_letter(payload: CoverLetterAnalyzeRequest):
+@router.post("/{provider}/analyze", response_model=CoverLetterAnalysis)
+def analyze_cover_letter(
+    payload: CoverLetterAnalyzeRequest,
+    provider: AIProvider = AIProvider.chatgpt,
+):
     conn = get_db()
     try:
         resume = conn.execute(
@@ -91,6 +95,7 @@ def analyze_cover_letter(payload: CoverLetterAnalyzeRequest):
             position=payload.position,
             source_url=payload.source_url,
             instructions=payload.instructions,
+            provider=provider.value,
         )
         return CoverLetterAnalysis(**result)
     except ValueError as exc:
@@ -102,14 +107,18 @@ def analyze_cover_letter(payload: CoverLetterAnalyzeRequest):
         ) from exc
 
 
-@router.post("/research", response_model=CompanyResearch)
-def research_cover_letter_company(payload: CoverLetterResearchRequest):
+@router.post("/{provider}/research", response_model=CompanyResearch)
+def research_cover_letter_company(
+    payload: CoverLetterResearchRequest,
+    provider: AIProvider = AIProvider.chatgpt,
+):
     try:
         result = research_company(
             company=payload.company,
             position=payload.position,
             role_summary=payload.role_summary,
             source_url=payload.source_url,
+            provider=provider.value,
         )
         return CompanyResearch(**result)
     except ValueError as exc:
@@ -121,8 +130,11 @@ def research_cover_letter_company(payload: CoverLetterResearchRequest):
         ) from exc
 
 
-@router.post("/generate", response_model=CoverLetter, status_code=201)
-def create_cover_letter(payload: CoverLetterGenerateRequest):
+@router.post("/{provider}/generate", response_model=CoverLetter, status_code=201)
+def create_cover_letter(
+    payload: CoverLetterGenerateRequest,
+    provider: AIProvider = AIProvider.chatgpt,
+):
     conn = get_db()
     try:
         resume = conn.execute(
@@ -147,6 +159,7 @@ def create_cover_letter(payload: CoverLetterGenerateRequest):
         payload.selected_angle_id,
     )
     generation_context = CoverLetterGenerationContext(
+        provider=provider,
         source_url=payload.source_url,
         instructions=payload.instructions,
         analysis=analysis_data,
@@ -168,6 +181,7 @@ def create_cover_letter(payload: CoverLetterGenerateRequest):
             research=research_data,
             answers=answers_data,
             selected_angle_id=effective_angle_id,
+            provider=provider.value,
         )
         content = CoverLetterContent(**generated)
         if cover_letter_page_count(content.model_dump(), resume_data) > 1:

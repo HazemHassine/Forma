@@ -116,6 +116,37 @@
   padding: 14px;
   border-top: 1px solid rgba(255,255,255,.07);
 }
+.provider-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.provider-selector label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #8e96ad;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.provider-selector select {
+  width: 100%;
+  padding: 9px 30px 9px 10px;
+  border: 1px solid rgba(139,132,240,.2);
+  border-radius: 9px;
+  background: #20243a;
+  color: #f3f4ff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.provider-selector select:focus {
+  border-color: #857ef0;
+  outline: 2px solid rgba(133,126,240,.18);
+}
 .sidebar-ai-card { display: grid; grid-template-columns: 30px 1fr 16px; align-items: center; gap: 9px; padding: 12px; border-radius: 12px; background: linear-gradient(135deg, rgba(111,103,225,.17), rgba(111,103,225,.07)); border: 1px solid rgba(139,132,240,.14); color: white; }
 .sidebar-ai-card:hover { color: white; background: rgba(111,103,225,.2); }
 .sidebar-ai-icon { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 9px; background: rgba(133,126,240,.18); color: #aaa5ff; }

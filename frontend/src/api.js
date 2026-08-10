@@ -1,4 +1,17 @@
 const API_BASE = 'http://localhost:8000/api';
+const AI_PROVIDERS = new Set(['gemini', 'chatgpt']);
+
+function aiProviderPath(provider) {
+  if (!AI_PROVIDERS.has(provider)) {
+    throw new Error(`Unsupported AI provider: ${provider}`);
+  }
+  return `/ai/${provider}`;
+}
+
+function aiProviderSegment(provider) {
+  aiProviderPath(provider);
+  return provider;
+}
 
 function formatValidationIssue(issue) {
   if (typeof issue === 'string') return issue;
@@ -96,8 +109,8 @@ export const jobApi = {
 
 // AI endpoints
 export const aiApi = {
-  suggest: (data) => request('/ai/suggest', { method: 'POST', body: data }),
-  optimize: (resumeVersionId, jobDescription, context = {}) => request('/ai/optimize', {
+  suggest: (provider, data) => request(`${aiProviderPath(provider)}/suggest`, { method: 'POST', body: data }),
+  optimize: (provider, resumeVersionId, jobDescription, context = {}) => request(`${aiProviderPath(provider)}/optimize`, {
     method: 'POST',
     body: {
       resume_version_id: resumeVersionId,
@@ -112,9 +125,9 @@ export const aiApi = {
 export const coverLetterApi = {
   list: () => request('/cover-letters'),
   get: (id) => request(`/cover-letters/${id}`),
-  analyze: (data) => request('/cover-letters/analyze', { method: 'POST', body: data }),
-  research: (data) => request('/cover-letters/research', { method: 'POST', body: data }),
-  generate: (data) => request('/cover-letters/generate', { method: 'POST', body: data }),
+  analyze: (provider, data) => request(`/cover-letters/${aiProviderSegment(provider)}/analyze`, { method: 'POST', body: data }),
+  research: (provider, data) => request(`/cover-letters/${aiProviderSegment(provider)}/research`, { method: 'POST', body: data }),
+  generate: (provider, data) => request(`/cover-letters/${aiProviderSegment(provider)}/generate`, { method: 'POST', body: data }),
   update: (id, data) => request(`/cover-letters/${id}`, { method: 'PUT', body: data }),
   delete: (id) => request(`/cover-letters/${id}`, { method: 'DELETE' }),
   getPreviewUrl: (id, cacheKey = 0) => `${API_BASE}/cover-letters/${id}/pdf?t=${cacheKey}`,
@@ -124,7 +137,7 @@ export const coverLetterApi = {
 export const companyResearchApi = {
   list: () => request('/company-research'),
   get: (id) => request(`/company-research/${id}`),
-  research: (data) => request('/company-research/research', { method: 'POST', body: data }),
+  research: (provider, data) => request(`/company-research/${aiProviderSegment(provider)}/research`, { method: 'POST', body: data }),
   delete: (id) => request(`/company-research/${id}`, { method: 'DELETE' }),
 };
 

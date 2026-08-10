@@ -2,19 +2,21 @@ import os
 import json
 from typing import Any, TypedDict
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 
 # Resolve the backend environment file independently of the directory uvicorn
 # or Docker was started from. An empty injected variable should not mask the
 # configured key in this file.
 BACKEND_ENV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-load_dotenv(
-    dotenv_path=BACKEND_ENV_PATH,
-    override=not bool(os.getenv("GEMINI_API_KEY")),
-)
+load_dotenv(dotenv_path=BACKEND_ENV_PATH, override=False)
+_file_environment = dotenv_values(BACKEND_ENV_PATH)
+for _api_key_name in ("GEMINI_API_KEY", "OPENAI_API_KEY"):
+    if not os.getenv(_api_key_name) and _file_environment.get(_api_key_name):
+        os.environ[_api_key_name] = _file_environment[_api_key_name]
 
 WRITING_STYLE_RULES = """
 WRITING STYLE RULES - YOU MUST FOLLOW ALL OF THESE:
@@ -93,34 +95,62 @@ No markdown, code fences, commentary, or additional keys.
 
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+OPENAI_RESUME_MODEL = os.getenv("OPENAI_RESUME_MODEL", "gpt-5.6-sol")
 
 
-def _get_model(*, max_tokens: int) -> ChatGoogleGenerativeAI:
-    """Build the LangChain Gemini integration with application defaults."""
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise ValueError(
-            "GEMINI_API_KEY not set. Please add it to your .env file."
+def _get_model(*, provider: str, max_tokens: int):
+    """Build the selected chat model with shared application defaults."""
+    if provider == "gemini":
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "GEMINI_API_KEY is not set. Add it to backend/.env and restart the backend."
+            )
+        return ChatGoogleGenerativeAI(
+            model=GEMINI_MODEL,
+            google_api_key=api_key,
+            temperature=0.7,
+            max_tokens=max_tokens,
+            retries=3,
+            request_timeout=180,
         )
-    return ChatGoogleGenerativeAI(
-        model=GEMINI_MODEL,
-        google_api_key=api_key,
-        temperature=0.7,
-        max_tokens=max_tokens,
-        retries=3,
-        request_timeout=180,
+
+    if provider == "chatgpt":
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError(
+                "OPENAI_API_KEY is not set. Add it to backend/.env and restart the backend."
+            )
+        return ChatOpenAI(
+            model=OPENAI_RESUME_MODEL,
+            api_key=api_key,
+            use_responses_api=True,
+            store=False,
+            reasoning_effort="medium",
+            verbosity="medium",
+            timeout=180,
+            max_retries=3,
+            max_tokens=max_tokens,
+        )
+
+    raise ValueError(
+        f"Unsupported AI provider '{provider}'. Choose 'gemini' or 'chatgpt'."
     )
 
 
-class GeminiGraphState(TypedDict, total=False):
+class AIGraphState(TypedDict, total=False):
+    provider: str
     messages: list
     schema: dict[str, Any]
     max_tokens: int
     result: Any
 
 
-def _invoke_gemini(state: GeminiGraphState) -> GeminiGraphState:
-    model = _get_model(max_tokens=state["max_tokens"])
+def _invoke_model(state: AIGraphState) -> AIGraphState:
+    model = _get_model(
+        provider=state.get("provider", "gemini"),
+        max_tokens=state["max_tokens"],
+    )
     if state.get("schema"):
         model = model.with_structured_output(
             state["schema"],
@@ -130,15 +160,29 @@ def _invoke_gemini(state: GeminiGraphState) -> GeminiGraphState:
     return {"result": response}
 
 
-def _build_gemini_graph():
-    builder = StateGraph(GeminiGraphState)
-    builder.add_node("invoke_model", _invoke_gemini)
+def _build_ai_graph():
+    builder = StateGraph(AIGraphState)
+    builder.add_node("invoke_model", _invoke_model)
     builder.add_edge(START, "invoke_model")
     builder.add_edge("invoke_model", END)
     return builder.compile()
 
 
-GEMINI_GRAPH = _build_gemini_graph()
+AI_GRAPH = _build_ai_graph()
+# Kept as an alias for callers that imported the previous graph name.
+GEMINI_GRAPH = AI_GRAPH
+
+
+def _result_text(result: Any) -> str:
+    if isinstance(result, str):
+        return result.strip()
+    text = getattr(result, "text", None)
+    if isinstance(text, str):
+        return text.strip()
+    content = getattr(result, "content", None)
+    if isinstance(content, str):
+        return content.strip()
+    raise ValueError("The selected AI provider returned no text.")
 
 
 def suggest_improvement(
@@ -146,8 +190,9 @@ def suggest_improvement(
     current_content: str,
     job_description: str = None,
     feedback: str = None,
+    provider: str = "gemini",
 ) -> str:
-    """Use Gemini to suggest improvements for a resume section."""
+    """Use the selected provider to improve a resume section."""
     system_prompt = SYSTEM_PROMPTS.get(section_type, SYSTEM_PROMPTS["about_me"])
 
     user_message = f"Current content:\n{current_content}"
@@ -156,8 +201,9 @@ def suggest_improvement(
     if feedback:
         user_message += f"\n\nSpecific user feedback/instructions to incorporate:\n{feedback}"
 
-    state = GEMINI_GRAPH.invoke(
+    state = AI_GRAPH.invoke(
         {
+            "provider": provider,
             "messages": [
                 SystemMessage(content=system_prompt),
                 HumanMessage(content=user_message),
@@ -165,7 +211,7 @@ def suggest_improvement(
             "max_tokens": 500,
         }
     )
-    return state["result"].text.strip()
+    return _result_text(state["result"])
 
 
 def optimize_resume(
@@ -174,8 +220,9 @@ def optimize_resume(
     target_role: str = None,
     company: str = None,
     instructions: str = None,
+    provider: str = "gemini",
 ) -> dict:
-    """Optimize an entire resume for a specific job description using Gemini."""
+    """Optimize a resume with the selected AI provider."""
     context = {
         "target_role": target_role or "Infer from the job description",
         "company": company or "Not provided",
@@ -207,8 +254,9 @@ def optimize_resume(
             "keywords_used",
         ],
     }
-    state = GEMINI_GRAPH.invoke(
+    state = AI_GRAPH.invoke(
         {
+            "provider": provider,
             "messages": [
                 SystemMessage(content=OPTIMIZE_SYSTEM_PROMPT),
                 HumanMessage(content=user_message),

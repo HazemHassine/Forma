@@ -7,7 +7,7 @@ import {
   Users,
 } from 'lucide-react';
 import { companyResearchApi } from '../api';
-import { useToast } from '../App';
+import { useAIProvider, useToast } from '../App';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import './CompanyResearchPage.css';
@@ -633,6 +633,7 @@ function CompanyReport({ entity }) {
 
 export default function CompanyResearchPage() {
   const addToast = useToast();
+  const { aiProvider } = useAIProvider();
   const [reports, setReports] = useState([]);
   const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [libraryError, setLibraryError] = useState('');
@@ -735,7 +736,7 @@ export default function CompanyResearchPage() {
     setProgressIndex(0);
     setResearchError('');
     try {
-      const payload = await companyResearchApi.research({
+      const payload = await companyResearchApi.research(aiProvider, {
         company: form.company.trim(),
         website_url: form.website_url.trim() || null,
         role: form.role.trim() || null,

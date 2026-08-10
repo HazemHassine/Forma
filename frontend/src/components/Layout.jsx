@@ -1,8 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { PenLine, Layers, Briefcase, Target, Mail, Command, Building2 } from 'lucide-react';
+import { PenLine, Layers, Briefcase, Target, Mail, Command, Building2, Bot } from 'lucide-react';
+import { useAIProvider } from '../App';
 import './Layout.css';
 
 export default function Layout({ children }) {
+  const { aiProvider, setAIProvider } = useAIProvider();
+
   return (
     <div className="layout">
       <aside className="sidebar">
@@ -44,6 +47,18 @@ export default function Layout({ children }) {
           </NavLink>
         </nav>
         <div className="sidebar-footer">
+          <div className="provider-selector">
+            <label htmlFor="ai-provider"><Bot size={14} /> AI provider</label>
+            <select
+              id="ai-provider"
+              value={aiProvider}
+              onChange={event => setAIProvider(event.target.value)}
+              aria-label="AI provider"
+            >
+              <option value="gemini">Gemini</option>
+              <option value="chatgpt">ChatGPT</option>
+            </select>
+          </div>
           <div className="sidebar-command">
             <Command size={14} />
             <span>Everything autosaves</span>

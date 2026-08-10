@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Query
 
 from database import get_db
 from models import (
+    AIProvider,
     CompanyResearchReport,
     CompanyResearchReportContent,
     CompanyResearchReportRequest,
@@ -84,11 +85,14 @@ def list_company_research_reports(
 
 
 @router.post(
-    "/research",
+    "/{provider}/research",
     response_model=CompanyResearchReport,
     status_code=201,
 )
-def create_company_research_report(payload: CompanyResearchReportRequest):
+def create_company_research_report(
+    payload: CompanyResearchReportRequest,
+    provider: AIProvider = AIProvider.chatgpt,
+):
     company = payload.company.strip()
     if not company:
         raise HTTPException(status_code=400, detail="Company is required")
@@ -105,6 +109,7 @@ def create_company_research_report(payload: CompanyResearchReportRequest):
             role=role,
             job_context=job_context,
             focus=focus,
+            provider=provider.value,
         )
         report = CompanyResearchReportContent(**result)
     except ValueError as exc:

@@ -6,7 +6,7 @@ import {
   ShieldCheck, Sparkles, Target, Trash2,
 } from 'lucide-react';
 import { coverLetterApi, resumeApi } from '../api';
-import { useToast } from '../App';
+import { useAIProvider, useToast } from '../App';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
 import './CoverLettersPage.css';
@@ -311,6 +311,7 @@ function DraftDecisionSummary({ context }) {
 
 export default function CoverLettersPage() {
   const addToast = useToast();
+  const { aiProvider } = useAIProvider();
   const [letters, setLetters] = useState([]);
   const [versions, setVersions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -425,7 +426,7 @@ export default function CoverLettersPage() {
     setSelectedInsights([]);
     setAnswers({});
     try {
-      const analyzed = await coverLetterApi.analyze(payload);
+      const analyzed = await coverLetterApi.analyze(aiProvider, payload);
       setAnalysis(analyzed);
       const analyzedAngles = asArray(analyzed.angles);
       const recommendedAngle = findAngle(analyzed, analyzed.recommended_angle_id);
@@ -455,7 +456,7 @@ export default function CoverLettersPage() {
     setBusyPhase('researching');
     let researched;
     try {
-      researched = await coverLetterApi.research({
+      researched = await coverLetterApi.research(aiProvider, {
         company: analysis.company || form.company.trim() || null,
         position: analysis.position || form.position.trim() || null,
         role_summary: analysis.role_summary || null,
@@ -519,7 +520,7 @@ export default function CoverLettersPage() {
     setWizardStep(4);
     setBusyPhase('drafting');
     try {
-      const letter = await coverLetterApi.generate({
+      const letter = await coverLetterApi.generate(aiProvider, {
         ...buildBasePayload(),
         analysis,
         research: selectedResearch,

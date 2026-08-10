@@ -7,21 +7,31 @@ from typing import TypedDict
 from urllib import error, request
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
 
 
 BACKEND_ENV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-load_dotenv(
-    dotenv_path=BACKEND_ENV_PATH,
-    override=not bool(os.getenv("OPENAI_API_KEY")),
-)
+load_dotenv(dotenv_path=BACKEND_ENV_PATH, override=False)
+_file_environment = dotenv_values(BACKEND_ENV_PATH)
+for _api_key_name in ("GEMINI_API_KEY", "OPENAI_API_KEY"):
+    if not os.getenv(_api_key_name) and _file_environment.get(_api_key_name):
+        os.environ[_api_key_name] = _file_environment[_api_key_name]
 
 OPENAI_MODEL = os.getenv("OPENAI_COVER_LETTER_MODEL", "gpt-5.6-sol")
 OPENAI_COMPANY_RESEARCH_MODEL = (
     os.getenv("OPENAI_COMPANY_RESEARCH_MODEL") or OPENAI_MODEL
+)
+GEMINI_COVER_LETTER_MODEL = os.getenv(
+    "GEMINI_COVER_LETTER_MODEL",
+    os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
+)
+GEMINI_COMPANY_RESEARCH_MODEL = os.getenv(
+    "GEMINI_COMPANY_RESEARCH_MODEL",
+    GEMINI_COVER_LETTER_MODEL,
 )
 OPENAI_REQUEST_TIMEOUT = 180
 OPENAI_MAX_ATTEMPTS = 3
@@ -833,7 +843,25 @@ def _get_openai_model(model: str | None = None) -> ChatOpenAI:
     )
 
 
+def _get_gemini_model(model: str | None = None) -> ChatGoogleGenerativeAI:
+    """Build the LangChain Gemini model shared by all workflows."""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError(
+            "GEMINI_API_KEY is not set. Add it to backend/.env and restart the backend."
+        )
+    return ChatGoogleGenerativeAI(
+        model=model or GEMINI_COVER_LETTER_MODEL,
+        google_api_key=api_key,
+        temperature=0.4,
+        max_tokens=12000,
+        retries=OPENAI_MAX_ATTEMPTS,
+        request_timeout=OPENAI_REQUEST_TIMEOUT,
+    )
+
+
 class StructuredGraphState(TypedDict, total=False):
+    provider: str
     instructions: str
     context: dict
     schema: dict
@@ -846,6 +874,54 @@ class StructuredGraphState(TypedDict, total=False):
 
 
 def _invoke_structured_model(state: StructuredGraphState) -> StructuredGraphState:
+    provider = state.get("provider", "chatgpt")
+    messages = [
+        SystemMessage(content=state["instructions"]),
+        HumanMessage(content=json.dumps(state["context"], ensure_ascii=False)),
+    ]
+
+    if provider == "gemini":
+        model = _get_gemini_model(state.get("model"))
+        raw_search = None
+        if state.get("tools"):
+            raw_search = model.invoke(
+                messages,
+                tools=[{"google_search": {}}],
+            )
+            consulted_sources = _consulted_web_sources(raw_search)
+            messages.append(
+                HumanMessage(
+                    content=(
+                        "Convert the grounded research below into the requested JSON "
+                        "schema. Cite only exact URLs from CONSULTED SOURCES. Do not "
+                        "add facts or URLs that are absent from the grounded research.\n\n"
+                        f"GROUNDED RESEARCH:\n{raw_search.text}\n\n"
+                        "CONSULTED SOURCES:\n"
+                        f"{json.dumps(consulted_sources, ensure_ascii=False)}"
+                    )
+                )
+            )
+        response = model.with_structured_output(
+            state["schema"],
+            method="json_schema",
+            include_raw=True,
+        ).invoke(messages)
+        if response.get("parsing_error"):
+            raise ValueError(
+                f"Gemini returned invalid structured output: {response['parsing_error']}"
+            )
+        parsed = response.get("parsed")
+        if hasattr(parsed, "model_dump"):
+            parsed = parsed.model_dump()
+        if not isinstance(parsed, dict):
+            raise ValueError("Gemini returned invalid structured output.")
+        return {"result": parsed, "raw": raw_search or response["raw"]}
+
+    if provider != "chatgpt":
+        raise ValueError(
+            f"Unsupported AI provider '{provider}'. Choose 'gemini' or 'chatgpt'."
+        )
+
     tools = [
         {"type": "web_search_preview"} if tool.get("type") == "web_search" else tool
         for tool in state.get("tools", [])
@@ -859,12 +935,7 @@ def _invoke_structured_model(state: StructuredGraphState) -> StructuredGraphStat
         tool_choice=state.get("tool_choice"),
         include=state.get("include"),
     )
-    response = runnable.invoke(
-        [
-            SystemMessage(content=state["instructions"]),
-            HumanMessage(content=json.dumps(state["context"], ensure_ascii=False)),
-        ]
-    )
+    response = runnable.invoke(messages)
     if response.get("parsing_error"):
         raise ValueError(
             f"OpenAI returned invalid structured output: {response['parsing_error']}"
@@ -900,8 +971,10 @@ def _structured_response(
     model: str | None = None,
     background: bool = False,
     background_timeout: float = OPENAI_COMPANY_RESEARCH_MAX_WAIT,
+    provider: str = "chatgpt",
 ) -> tuple[dict, dict]:
     state = {
+        "provider": provider,
         "instructions": instructions,
         "context": context,
         "schema": {"title": schema_name, **schema},
@@ -959,6 +1032,20 @@ def _canonical_url(value: str) -> str | None:
 
 def _consulted_web_sources(payload: dict | AIMessage) -> list[dict]:
     if isinstance(payload, AIMessage):
+        grounding = payload.response_metadata.get("grounding_metadata") or {}
+        sources_by_url = {}
+        for chunk in grounding.get("grounding_chunks") or []:
+            web = chunk.get("web") or {}
+            url = web.get("uri") or web.get("url")
+            canonical = _canonical_url(url)
+            if not canonical or canonical in sources_by_url:
+                continue
+            sources_by_url[canonical] = {
+                "title": str(web.get("title") or url).strip(),
+                "url": url.strip(),
+            }
+        if sources_by_url:
+            return list(sources_by_url.values())
         blocks = payload.content_blocks
         payload = {"output": blocks}
 
@@ -1343,6 +1430,7 @@ def research_company_report(
     role: str | None = None,
     job_context: str | None = None,
     focus: str | None = None,
+    provider: str = "chatgpt",
 ) -> dict:
     researched_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     context = {
@@ -1361,9 +1449,14 @@ def research_company_report(
         tools=[{"type": "web_search"}],
         tool_choice="required",
         include=["web_search_call.action.sources"],
-        model=OPENAI_COMPANY_RESEARCH_MODEL,
+        model=(
+            GEMINI_COMPANY_RESEARCH_MODEL
+            if provider == "gemini"
+            else OPENAI_COMPANY_RESEARCH_MODEL
+        ),
         background=True,
         background_timeout=OPENAI_COMPANY_RESEARCH_MAX_WAIT,
+        provider=provider,
     )
     return sanitize_company_research_report(
         result,
@@ -1384,6 +1477,7 @@ def analyze_cover_letter(
     position: str | None = None,
     source_url: str | None = None,
     instructions: str | None = None,
+    provider: str = "chatgpt",
 ) -> dict:
     context = {
         "known_company": company,
@@ -1398,6 +1492,7 @@ def analyze_cover_letter(
         context=context,
         schema_name="cover_letter_analysis",
         schema=ANALYSIS_SCHEMA,
+        provider=provider,
     )
     recommended_angle_id = resolve_cover_letter_angle_id(result, None)
     result["recommended_angle_id"] = recommended_angle_id or ""
@@ -1410,6 +1505,7 @@ def research_company(
     position: str,
     role_summary: str,
     source_url: str | None = None,
+    provider: str = "chatgpt",
 ) -> dict:
     context = {
         "company": company,
@@ -1425,6 +1521,12 @@ def research_company(
         tools=[{"type": "web_search"}],
         tool_choice="required",
         include=["web_search_call.action.sources"],
+        model=(
+            GEMINI_COMPANY_RESEARCH_MODEL
+            if provider == "gemini"
+            else None
+        ),
+        provider=provider,
     )
     consulted_sources = _consulted_web_sources(payload)
     sanitized = sanitize_company_research(
@@ -1567,6 +1669,7 @@ def generate_cover_letter(
     research: dict | None = None,
     answers: list[dict] | None = None,
     selected_angle_id: str | None = None,
+    provider: str = "chatgpt",
 ) -> dict:
     validated_research = sanitize_company_research(research)
     selected_angle = _resolve_cover_letter_angle(analysis, selected_angle_id)
@@ -1594,6 +1697,7 @@ def generate_cover_letter(
         context=context,
         schema_name="cover_letter",
         schema=COVER_LETTER_SCHEMA,
+        provider=provider,
     )
     result["company"] = str(result.get("company", "")).strip()
     result["position"] = str(result.get("position", "")).strip()

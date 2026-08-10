@@ -4,6 +4,11 @@ from typing import Optional
 from datetime import date
 
 
+class AIProvider(str, Enum):
+    gemini = "gemini"
+    chatgpt = "chatgpt"
+
+
 class PersonalInfo(BaseModel):
     name: str
     title: str
@@ -408,6 +413,7 @@ class ClarificationAnswer(BaseModel):
 
 
 class CoverLetterGenerationContext(BaseModel):
+    provider: Optional[AIProvider] = None
     source_url: Optional[str] = None
     instructions: Optional[str] = None
     analysis: Optional[CoverLetterAnalysis] = None
