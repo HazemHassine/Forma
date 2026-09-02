@@ -11,6 +11,7 @@ import {
   Trash2,
   FileText,
   Briefcase,
+  Sparkles,
 } from 'lucide-react';
 import { resumeApi, critiqueApi, formatApiError } from '../api';
 import { useToast, useAIProvider } from '../App';
@@ -23,11 +24,12 @@ export default function CritiquePage() {
 
   const [versions, setVersions] = useState([]);
   const [selectedVersionId, setSelectedVersionId] = useState(null);
+  const [includeContext, setIncludeContext] = useState(true);
   const [targetRole, setTargetRole] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [showRoleInputs, setShowRoleInputs] = useState(false);
 
-  const [loading, setLoading] = useState(false);
+
   const [analyzing, setAnalyzing] = useState(false);
 
   const [history, setHistory] = useState([]);
@@ -39,7 +41,6 @@ export default function CritiquePage() {
 
   // Load resume versions on mount
   useEffect(() => {
-    setLoading(true);
     resumeApi.list()
       .then(data => {
         setVersions(data);
@@ -50,8 +51,7 @@ export default function CritiquePage() {
       })
       .catch(err => {
         addToast(`Failed to load versions: ${formatApiError(err)}`, 'error');
-      })
-      .finally(() => setLoading(false));
+      });
   }, [addToast]);
 
   // Load critique history when selected version changes
@@ -74,6 +74,7 @@ export default function CritiquePage() {
 
   useEffect(() => {
     if (selectedVersionId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       loadHistory(selectedVersionId);
     }
   }, [selectedVersionId, loadHistory]);
@@ -90,6 +91,7 @@ export default function CritiquePage() {
         resume_version_id: selectedVersionId,
         target_role: targetRole.trim() || null,
         job_description: jobDescription.trim() || null,
+        include_context: includeContext,
       });
       setCurrentCritique(response);
       addToast('Review completed', 'success');
@@ -189,6 +191,20 @@ export default function CritiquePage() {
               <span>{showRoleInputs ? 'Hide job target' : '+ Add target job post'}</span>
               {showRoleInputs ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
+
+            <label
+              className="context-toggle-label"
+              title="Compare CV against your Candidate Context Vault to find missing achievements"
+            >
+              <input
+                type="checkbox"
+                checked={includeContext}
+                onChange={(e) => setIncludeContext(e.target.checked)}
+                disabled={analyzing}
+              />
+              <Sparkles size={13} className="context-toggle-sparkle" />
+              <span>Context Vault</span>
+            </label>
 
             <Button
               variant="primary"
@@ -317,6 +333,27 @@ export default function CritiquePage() {
                   <li key={idx}>
                     <Check size={14} className="check-icon" />
                     <span>{str}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {/* Context Vault Opportunities */}
+          {report.context_recommendations?.length > 0 && (
+            <section className="critique-context-card">
+              <div className="critique-context-header">
+                <Sparkles size={16} className="context-card-sparkle" />
+                <h3 className="section-subtitle">Context Vault Opportunities (Unmined Achievements)</h3>
+              </div>
+              <p className="critique-context-desc">
+                Forma verified these accomplishments and technical capabilities in your Candidate Context Vault that are currently missing or underrepresented in this resume version:
+              </p>
+              <ul className="critique-context-list">
+                {report.context_recommendations.map((rec, idx) => (
+                  <li key={idx}>
+                    <Sparkles size={13} className="context-bullet-sparkle" />
+                    <span>{rec}</span>
                   </li>
                 ))}
               </ul>

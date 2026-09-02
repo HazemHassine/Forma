@@ -5,10 +5,13 @@ building cover letters, researching companies, and tracking job applications.
 
 ## Features
 
+- **Candidate Context Vault**: Ingest massive career dumps, GitHub/portfolio links, and notes. Distill them into structured, verifiable knowledge cards with category chips, tag search, and prompt token density estimation.
+- **App-Wide Context Intelligence**: Connects the Context Vault to CV Critique, Resume Tailoring, Section Suggestions, and Cover Letters, ensuring AI outputs draw upon verified background facts and scale metrics rather than generic boilerplate.
+- **Resume Review & Critique**: Objective AI audits of your CV for passive voice, lack of quantifiability, buzzwords, and structure, automatically surfacing unmined achievements from your Context Vault.
 - Section-by-section résumé editor with PDF preview and export
 - Version history and per-application résumé tracking
 - Job application pipeline with statuses, notes, links, and dates
-- AI-assisted résumé tailoring
+- AI-assisted résumé tailoring with diff visualization and evidence mapping
 - Multi-step cover-letter analysis, company research, clarification, drafting,
   editing, and PDF export
 - Standalone, source-backed company research reports
@@ -28,6 +31,22 @@ All screenshots below use fictional demonstration data.
 </p>
 
 <table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/06-candidate-context-vault.png">
+        <img src="docs/screenshots/06-candidate-context-vault.png" alt="Forma candidate context vault with dynamic knowledge distillation">
+      </a>
+      <br>
+      <sub><strong>Candidate Context Vault:</strong> Ingest conversational career dumps, project links, and scale metrics into structured, relevance-scored knowledge cards.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/07-resume-critique.png">
+        <img src="docs/screenshots/07-resume-critique.png" alt="Forma resume review and critique showing unmined context vault opportunities">
+      </a>
+      <br>
+      <sub><strong>Resume Review & Critique:</strong> Score bullet impact and discover unmined achievements in your Context Vault missing from the CV.</sub>
+    </td>
+  </tr>
   <tr>
     <td width="50%" valign="top">
       <a href="docs/screenshots/01-agentic-analysis.png">
@@ -334,21 +353,36 @@ npm run build
 │   ├── config.py
 │   ├── database.py
 │   ├── models.py
+│   ├── context_engine.py      # Distillation pipeline & relevance-scored context assembler
+│   ├── cv_critic.py           # Multi-category CV evaluation & vault cross-referencing
+│   ├── ai_helper.py           # Resume tailoring & section suggestions with vault facts
+│   ├── openai_helper.py       # Cover letter drafting & research workflows
 │   ├── sql/
 │   │   ├── schema.sql
 │   │   └── migrations/
 │   ├── sample_data/
 │   │   └── default_resume.json
 │   ├── routers/
+│   │   ├── context.py         # REST endpoints for Context Vault sources, items, synthesis
+│   │   ├── cv_critique.py     # CV critique endpoints
+│   │   ├── ai.py              # Resume suggest & optimize
+│   │   ├── cover_letters.py   # Cover letter workflows
+│   │   └── resumes.py         # Resume CRUD & PDF export
 │   └── templates/
 ├── frontend/
 │   ├── src/
+│   │   ├── pages/
+│   │   │   ├── ContextPage.jsx    # Candidate Context Vault explorer & ingestion UI
+│   │   │   ├── CritiquePage.jsx   # Resume review & vault opportunities UI
+│   │   │   ├── OptimizePage.jsx   # Role tailoring with diff inspection
+│   │   │   └── ...
+│   │   └── api.js
 │   └── tests/
 ├── docs/
-│   └── screenshots/         # Public fictional demo screenshots
+│   └── screenshots/           # Public fictional demo screenshots
 ├── supabase/
-│   └── schema.sql            # Paste into the Supabase SQL Editor
-├── local-data/              # Private and ignored
+│   └── schema.sql             # Paste into the Supabase SQL Editor
+├── local-data/                # Private and ignored
 └── docker-compose.yml
 ```
 

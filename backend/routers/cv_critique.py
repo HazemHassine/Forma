@@ -123,12 +123,26 @@ def create_cv_critique(provider: AIProvider, request: CVCritiqueRequest):
 
     resume_data = json.loads(row["data"])
 
+    context_str = None
+    if request.include_context:
+        try:
+            import context_engine
+            context_str = context_engine.assemble_context(
+                conn,
+                target_role=request.target_role,
+                job_description=request.job_description,
+                max_items=15,
+            )
+        except Exception:
+            context_str = None
+
     try:
         report = critique_cv(
             resume_data=resume_data,
             target_role=request.target_role,
             job_description=request.job_description,
             instructions=request.instructions,
+            context_data=context_str,
             provider=provider.value,
         )
     except ValueError as e:

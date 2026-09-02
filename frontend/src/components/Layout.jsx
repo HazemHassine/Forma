@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { PenLine, Layers, Briefcase, Target, Mail, Command, Building2, Bot, Database, CircleAlert, SearchCheck } from 'lucide-react';
+import { PenLine, Layers, Briefcase, Target, Mail, Command, Building2, Bot, Database, CircleAlert, SearchCheck, Sparkles } from 'lucide-react';
 import { useAIProvider } from '../App';
 import { systemApi } from '../api';
 import './Layout.css';
@@ -42,6 +42,10 @@ export default function Layout({ children }) {
           <NavLink to="/versions" aria-label="Versions" title="Versions" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><Layers size={16} /></span>
             <span><strong>Versions</strong></span>
+          </NavLink>
+          <NavLink to="/context" aria-label="Context Vault" title="Context Vault" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><Sparkles size={16} /></span>
+            <span><strong>Context Vault</strong><small className="nav-new">AI</small></span>
           </NavLink>
           <div className="sidebar-nav-label sidebar-nav-label-spaced">Workflow</div>
           <NavLink to="/jobs" aria-label="Applications" title="Applications" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>

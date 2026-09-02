@@ -8,6 +8,7 @@ import OptimizePage from './pages/OptimizePage';
 import CoverLettersPage from './pages/CoverLettersPage';
 import CompanyResearchPage from './pages/CompanyResearchPage';
 import CritiquePage from './pages/CritiquePage';
+import ContextPage from './pages/ContextPage';
 import Toast from './components/Toast';
 
 const ToastContext = createContext(null);
@@ -82,6 +83,7 @@ function App() {
             <Route path="/cover-letters" element={<CoverLettersPage />} />
             <Route path="/company-research" element={<CompanyResearchPage />} />
             <Route path="/critique" element={<CritiquePage />} />
+            <Route path="/context" element={<ContextPage />} />
           </Routes>
         </Layout>
         <Toast toasts={toasts} onRemove={removeToast} />

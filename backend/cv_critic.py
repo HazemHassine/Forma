@@ -34,6 +34,12 @@ CRITIQUE CRITERIA:
    - If a target role or job description is provided, identify key requirements that are unevidenced or under-emphasized in the CV.
    - Check that technical skills mentioned in bullets are backed by real context.
 
+6. Context Vault Recommendations & Unmined Value:
+   - If CANDIDATE CONTEXT VAULT data is provided, cross-reference the CV against it!
+   - Identify real achievements, unlisted projects, scale metrics, or technologies present in the candidate's Context Vault that match the target role/job description but are missing from this specific CV.
+   - Populate "context_recommendations" with high-impact suggestions: "You have verified experience with [Skill/Project/Metric] in your Context Vault; incorporate it to boost your match for this role."
+   - If a CV bullet is weak or lacks metrics, and the Context Vault contains exact metrics for that accomplishment, incorporate the verified metric in "suggested_fix".
+
 ISSUE SEVERITY GUIDELINES:
 - critical: Serious flaws that significantly lower callback rates (e.g., passive task lists with zero outcomes, buzzword-heavy summaries, unreadable sentence fragments).
 - warning: Noticeable weaknesses that reduce competitiveness (e.g., missing metrics where obvious, weak opening verbs, repetitive phrasing).
@@ -73,6 +79,10 @@ CRITIQUE_OUTPUT_SCHEMA = {
             },
         },
         "strengths": {
+            "type": "array",
+            "items": {"type": "string"},
+        },
+        "context_recommendations": {
             "type": "array",
             "items": {"type": "string"},
         },
@@ -133,6 +143,7 @@ def critique_cv(
     target_role: Optional[str] = None,
     job_description: Optional[str] = None,
     instructions: Optional[str] = None,
+    context_data: Optional[str] = None,
     provider: str = "gemini",
 ) -> dict:
     """Analyze resume_data and produce a structured critique report."""
@@ -146,10 +157,14 @@ def critique_cv(
 
     context_str = "\n\n".join(context_lines) if context_lines else "GENERAL REVIEW (no specific job post provided)"
 
-    user_message = (
-        f"AUDIT CONTEXT:\n{context_str}\n\n"
-        f"CANDIDATE RESUME DATA:\n{json.dumps(resume_data, indent=2)}"
-    )
+    user_message_parts = [
+        f"AUDIT CONTEXT:\n{context_str}",
+        f"CANDIDATE RESUME DATA:\n{json.dumps(resume_data, indent=2)}",
+    ]
+    if context_data and context_data.strip():
+        user_message_parts.append(context_data.strip())
+
+    user_message = "\n\n".join(user_message_parts)
 
     state = AI_GRAPH.invoke(
         {
@@ -172,6 +187,7 @@ def critique_cv(
     result["critical_count"] = sum(1 for i in issues if i.get("severity") == "critical")
     result["warning_count"] = sum(1 for i in issues if i.get("severity") == "warning")
     result["suggestion_count"] = sum(1 for i in issues if i.get("severity") == "suggestion")
+    result.setdefault("context_recommendations", [])
 
     # Clamp overall score between 0 and 100
     score = result.get("overall_score", 70)

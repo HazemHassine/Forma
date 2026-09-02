@@ -68,13 +68,15 @@ OPTIMIZE_SYSTEM_PROMPT = f"""You are the senior member of a coordinated hiring t
 
 WORKFLOW:
 1. Silently identify the role's core outcomes, required skills, terminology, seniority, and likely screening criteria.
-2. Map every useful requirement to evidence that already exists in the resume.
+2. Map every useful requirement to evidence that exists in the candidate's resume or the verified CANDIDATE CONTEXT VAULT.
 3. Rewrite only where that mapping is supported. Prefer concrete evidence over keyword repetition.
 4. Audit the result for invented claims, altered meaning, vague filler, and duplicated phrasing.
 
 NON-NEGOTIABLE RULES:
-- Preserve every fact. Never invent or infer experience, tools, metrics, responsibilities, proficiency, or outcomes.
-- Never add a job-description keyword unless the source resume contains evidence for it.
+- Preserve every fact. Candidate facts may come from either the SOURCE RESUME or the verified CANDIDATE CONTEXT VAULT. Never invent or infer experience, tools, metrics, responsibilities, proficiency, or outcomes absent from both.
+- When CANDIDATE CONTEXT VAULT is provided, actively draw upon its verified achievements, scale metrics, and technical accomplishments to enrich weak resume bullets or tailor the profile.
+- Report any vault items you used in 'context_evidence_used'.
+- Never add a job-description keyword unless supported by the resume or context vault.
 - Keep the exact number and order of work, project, education, research, skill, certificate, and language entries. Identity and ordering must remain stable for safe review.
 - Do not modify personal_info, education, skills, certificates, languages, references, names, employers, titles, dates, locations, project stacks, or research focus.
 - You may rewrite about_me, work_experience.bullets, project descriptions/bullets, and research descriptions.
@@ -94,7 +96,8 @@ Return ONLY valid JSON with this exact top-level structure:
   "match_summary": <one short sentence explaining the tailoring strategy>,
   "strengths": [<up to 4 evidence-backed matches>],
   "gaps": [<up to 4 important requirements not evidenced in the resume>],
-  "keywords_used": [<up to 10 job-description terms actually supported and used>]
+  "keywords_used": [<up to 10 job-description terms actually supported and used>],
+  "context_evidence_used": [<up to 5 specific facts or metrics incorporated from the context vault>]
 }}
 No markdown, code fences, commentary, or additional keys.
 """
@@ -219,6 +222,7 @@ def suggest_improvement(
     current_content: str,
     job_description: str = None,
     feedback: str = None,
+    context_data: str = None,
     provider: str = "gemini",
 ) -> str:
     """Use the selected provider to improve a resume section."""
@@ -229,6 +233,8 @@ def suggest_improvement(
         user_message += f"\n\nJob description to tailor for:\n{job_description}"
     if feedback:
         user_message += f"\n\nSpecific user feedback/instructions to incorporate:\n{feedback}"
+    if context_data and context_data.strip():
+        user_message += f"\n\nCANDIDATE CONTEXT VAULT (Use authentic details from this data):\n{context_data.strip()}"
 
     state = AI_GRAPH.invoke(
         {
@@ -249,6 +255,7 @@ def optimize_resume(
     target_role: str = None,
     company: str = None,
     instructions: str = None,
+    context_data: str = None,
     provider: str = "gemini",
 ) -> dict:
     """Optimize a resume with the selected AI provider."""
@@ -257,14 +264,20 @@ def optimize_resume(
         "company": company or "Not provided",
         "user_instructions": instructions or "No additional instructions",
     }
-    user_message = (
+    user_parts = [
         "TAILORING CONTEXT:\n"
-        f"{json.dumps(context, indent=2)}\n\n"
-        "SOURCE RESUME (the only source of candidate facts):\n"
-        f"{json.dumps(resume_data, indent=2)}\n\n"
-        "JOB DESCRIPTION:\n"
-        f"{job_description}"
+        f"{json.dumps(context, indent=2)}",
+        "SOURCE RESUME:\n"
+        f"{json.dumps(resume_data, indent=2)}",
+    ]
+    if context_data and context_data.strip():
+        user_parts.append(
+            f"CANDIDATE CONTEXT VAULT (Authorized second source of verified facts and metrics):\n{context_data.strip()}"
+        )
+    user_parts.append(
+        f"JOB DESCRIPTION:\n{job_description}"
     )
+    user_message = "\n\n".join(user_parts)
 
     output_schema = {
         "type": "object",
@@ -321,6 +334,7 @@ def optimize_resume(
             "strengths": {"type": "array", "items": {"type": "string"}},
             "gaps": {"type": "array", "items": {"type": "string"}},
             "keywords_used": {"type": "array", "items": {"type": "string"}},
+            "context_evidence_used": {"type": "array", "items": {"type": "string"}},
         },
         "required": [
             "resume",
@@ -345,6 +359,8 @@ def optimize_resume(
 
     if not isinstance(optimized, dict) or not isinstance(optimized.get("resume"), dict):
         raise ValueError("AI response did not contain the required resume object. Please try again.")
+
+    optimized.setdefault("context_evidence_used", [])
 
     # Start with a deep copy of the source resume data so all fields, structure,
     # and unedited sections remain completely intact and valid.

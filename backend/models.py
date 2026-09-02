@@ -183,6 +183,7 @@ class AISuggestRequest(BaseModel):
     current_content: str
     job_description: Optional[str] = None
     feedback: Optional[str] = None
+    include_context: bool = True
 
 
 class AISuggestResponse(BaseModel):
@@ -195,6 +196,7 @@ class OptimizeRequest(BaseModel):
     target_role: Optional[str] = None
     company: Optional[str] = None
     instructions: Optional[str] = None
+    include_context: bool = True
 
 
 class OptimizeResponse(BaseModel):
@@ -204,6 +206,7 @@ class OptimizeResponse(BaseModel):
     strengths: list[str] = []
     gaps: list[str] = []
     keywords_used: list[str] = []
+    context_evidence_used: list[str] = []
 
 
 class ResumeDuplicateRequest(BaseModel):
@@ -531,6 +534,7 @@ class CritiqueReport(BaseModel):
     warning_count: int = 0
     suggestion_count: int = 0
     issues: list[CritiqueIssue] = Field(default_factory=list)
+    context_recommendations: list[str] = Field(default_factory=list)
 
 
 class CVCritiqueRequest(BaseModel):
@@ -538,6 +542,7 @@ class CVCritiqueRequest(BaseModel):
     target_role: Optional[str] = None
     job_description: Optional[str] = None
     instructions: Optional[str] = None
+    include_context: bool = True
 
 
 class CVCritiqueResponse(BaseModel):
@@ -562,4 +567,114 @@ class CVCritiqueSummary(BaseModel):
     critical_count: int
     warning_count: int
     created_at: str
+
+
+# ============================================================================
+# Deep Context Vault Models
+# ============================================================================
+
+class ContextCategory(str, Enum):
+    profile_persona = "profile_persona"
+    experience_project = "experience_project"
+    achievement_metric = "achievement_metric"
+    skills_arsenal = "skills_arsenal"
+    education_credential = "education_credential"
+    proof_link = "proof_link"
+
+
+class ContextSourceType(str, Enum):
+    dump = "dump"
+    link = "link"
+    note = "note"
+    resume = "resume"
+
+
+class ContextSource(BaseModel):
+    id: int
+    title: str
+    source_type: str
+    content: str
+    url: Optional[str] = None
+    is_active: bool = True
+    created_at: str
+    updated_at: str
+
+
+class ContextSourceCreate(BaseModel):
+    title: str
+    source_type: str = "dump"
+    content: str
+    url: Optional[str] = None
+    is_active: bool = True
+
+
+class ContextSourceUpdate(BaseModel):
+    title: Optional[str] = None
+    content: Optional[str] = None
+    url: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+class ContextItem(BaseModel):
+    id: int
+    source_id: Optional[int] = None
+    category: str
+    title: str
+    content: str
+    tags: list[str] = Field(default_factory=list)
+    is_active: bool = True
+    created_at: str
+    updated_at: str
+
+
+class ContextItemCreate(BaseModel):
+    source_id: Optional[int] = None
+    category: str
+    title: str
+    content: str
+    tags: list[str] = Field(default_factory=list)
+    is_active: bool = True
+
+
+class ContextItemUpdate(BaseModel):
+    category: Optional[str] = None
+    title: Optional[str] = None
+    content: Optional[str] = None
+    tags: Optional[list[str]] = None
+    is_active: Optional[bool] = None
+
+
+class ContextProfile(BaseModel):
+    id: Optional[int] = None
+    summary: str
+    key_differentiators: list[str] = Field(default_factory=list)
+    target_roles: list[str] = Field(default_factory=list)
+    stats: dict = Field(default_factory=dict)
+    updated_at: Optional[str] = None
+
+
+class ContextStats(BaseModel):
+    total_sources: int
+    total_items: int
+    active_items: int
+    categories_breakdown: dict[str, int]
+    estimated_tokens: int
+    last_processed_at: Optional[str] = None
+
+
+class ContextSynthesizeRequest(BaseModel):
+    additional_notes: Optional[str] = None
+    replace_existing: bool = False
+
+
+class ContextSynthesizeResponse(BaseModel):
+    extracted_items_count: int
+    profile_summary: str
+    categories_breakdown: dict[str, int]
+
+
+class ContextPreviewResponse(BaseModel):
+    assembled_prompt: str
+    item_count: int
+    estimated_tokens: int
 
