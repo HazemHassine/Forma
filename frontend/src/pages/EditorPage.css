@@ -88,6 +88,24 @@
 .template-option-timeline .template-swatch { border-top: 0; border-left: 2px solid var(--template-accent); border-radius: 0 5px 5px 0; }
 .template-option-timeline .template-swatch i { margin-left: 5px; }
 
+.font-menu { width: 330px; }
+.font-menu-options { display: flex; flex-direction: column; gap: 7px; }
+.font-option {
+  display: grid; grid-template-columns: 42px 1fr 15px; align-items: center; gap: 9px;
+  padding: 9px; border: 1px solid var(--border-default); border-radius: 8px;
+  background: #fff; text-align: left; cursor: pointer;
+}
+.font-option:hover { border-color: var(--border-hover); background: var(--bg-elevated); }
+.font-option.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+.font-option-preview {
+  display: flex; align-items: center; justify-content: center; width: 40px; height: 36px;
+  border-radius: 6px; background: #f5f6fa; color: var(--text-primary); font-size: 17px;
+}
+.font-option > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.font-option strong { font-size: 12px; font-weight: 650; }
+.font-option small { margin-top: 2px; color: var(--text-muted); font-size: 9.5px; line-height: 1.25; }
+.font-option > svg { color: var(--accent); }
+
 .save-indicator {
   display: flex;
   align-items: center;

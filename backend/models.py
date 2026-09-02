@@ -21,6 +21,12 @@ class ResumeTemplate(str, Enum):
     timeline = "timeline"
 
 
+class ResumeFont(str, Enum):
+    classic = "classic"
+    clean = "clean"
+    modern = "modern"
+
+
 class CustomContactField(BaseModel):
     label: str = ""
     value: str = ""
@@ -103,6 +109,7 @@ class ResumeData(BaseModel):
     languages: list[LanguageEntry]
     references: str = "Available upon request"
     section_order: Optional[list[str]] = None
+    font_family: ResumeFont = ResumeFont.classic
 
 
 class ResumeVersionCreate(BaseModel):
@@ -677,4 +684,3 @@ class ContextPreviewResponse(BaseModel):
     assembled_prompt: str
     item_count: int
     estimated_tokens: int
-

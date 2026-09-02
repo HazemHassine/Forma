@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <style>
+    @font-face { font-family: 'Rubik'; font-style: normal; font-weight: 400; src: url('static/fonts/Rubik-Regular.ttf') format('truetype'); }
     @page { size: A4; margin: 24pt 45pt 42pt; }
     * { box-sizing: border-box; }
     body {
@@ -61,9 +62,11 @@
     .column .section-title { margin-top: 7pt; }
     .compact-item { margin: 0 0 1pt; }
     .references-inline { margin: 1pt 0 0; font-size: 8.2pt; }
+    body.font-clean, body.font-clean * { font-family: Arial, Helvetica, sans-serif !important; }
+    body.font-modern, body.font-modern * { font-family: 'Rubik', Arial, Helvetica, sans-serif !important; }
   </style>
 </head>
-<body>
+<body class="font-{{ resume.font_family | default('classic', true) }}">
   <header class="header">
     <h1 class="name">{{ resume.personal_info.name }}</h1>
     {% if resume.personal_info.title %}<p class="title">{{ resume.personal_info.title }}</p>{% endif %}

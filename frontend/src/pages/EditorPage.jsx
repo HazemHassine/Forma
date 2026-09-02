@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Download, FilePenLine, Palette, Check } from 'lucide-react';
+import { Save, Download, FilePenLine, Palette, Check, Type } from 'lucide-react';
 import { resumeApi } from '../api';
 import { useToast } from '../App';
 import ResumeEditor from '../components/ResumeEditor';
@@ -19,6 +19,7 @@ const EMPTY_RESUME = {
   certificates: [],
   languages: [],
   references: '',
+  font_family: 'classic',
   section_order: [
     'about_me',
     'work_experience',
@@ -44,6 +45,12 @@ const FALLBACK_TEMPLATES = [
   { id: 'timeline', name: 'Timeline', description: 'Dates lead a chronological rail', accent: '#315b7d' },
 ];
 
+const FONT_OPTIONS = [
+  { id: 'classic', name: 'Classic Serif', description: 'Traditional and highly readable', preview: 'Georgia, serif' },
+  { id: 'clean', name: 'Clean Sans', description: 'Simple, neutral, and ATS-friendly', preview: 'Arial, sans-serif' },
+  { id: 'modern', name: 'Modern Sans', description: 'Contemporary with clear hierarchy', preview: 'Rubik, Arial, sans-serif' },
+];
+
 export default function EditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -56,6 +63,7 @@ export default function EditorPage() {
   const [templateId, setTemplateId] = useState('modern');
   const [templates, setTemplates] = useState(FALLBACK_TEMPLATES);
   const [templateOpen, setTemplateOpen] = useState(false);
+  const [fontOpen, setFontOpen] = useState(false);
   const [loading, setLoading] = useState(Boolean(id));
   const [saveState, setSaveState] = useState('idle'); // idle | saving | saved
   const saveTimerRef = useRef(null);
@@ -167,6 +175,16 @@ export default function EditorPage() {
     }
   };
 
+  const handleFontChange = (fontFamily) => {
+    if (!resumeData || fontFamily === (resumeData.font_family || 'classic')) {
+      setFontOpen(false);
+      return;
+    }
+    handleDataChange({ ...resumeData, font_family: fontFamily });
+    setFontOpen(false);
+    addToast(`Font changed to ${FONT_OPTIONS.find(font => font.id === fontFamily)?.name || fontFamily}`, 'success');
+  };
+
   // Resizable divider
   const handleDividerMouseDown = (e) => {
     e.preventDefault();
@@ -249,6 +267,33 @@ export default function EditorPage() {
                       </span>
                       <span><strong>{template.name}</strong><small title={template.description}>{template.description}</small></span>
                       {template.id === templateId && <Check size={14} />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="template-picker">
+            <Button variant="secondary" size="sm" onClick={() => setFontOpen(open => !open)} disabled={!currentId}>
+              <Type size={14} /> {FONT_OPTIONS.find(font => font.id === (resumeData?.font_family || 'classic'))?.name || 'Font'}
+            </Button>
+            {fontOpen && (
+              <div className="template-menu font-menu">
+                <div className="template-menu-heading">
+                  <strong>Choose a document font</strong>
+                  <span>Curated for legibility in print and on screen.</span>
+                </div>
+                <div className="font-menu-options">
+                  {FONT_OPTIONS.map(font => (
+                    <button
+                      type="button"
+                      key={font.id}
+                      className={`font-option ${(resumeData?.font_family || 'classic') === font.id ? 'selected' : ''}`}
+                      onClick={() => handleFontChange(font.id)}
+                    >
+                      <span className="font-option-preview" style={{ fontFamily: font.preview }}>Aa</span>
+                      <span><strong>{font.name}</strong><small>{font.description}</small></span>
+                      {(resumeData?.font_family || 'classic') === font.id && <Check size={14} />}
                     </button>
                   ))}
                 </div>

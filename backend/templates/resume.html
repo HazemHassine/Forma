@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <style>
+        @font-face {
+            font-family: 'Rubik';
+            font-style: normal;
+            font-weight: 400;
+            src: url('static/fonts/Rubik-Regular.ttf') format('truetype');
+        }
         @page {
             size: A4;
             margin: 0pt 20pt;
@@ -43,8 +49,9 @@
             padding-top: 10pt;
         }
 
-        td.header-left {
+        tr.header-row td.header-left {
             width: 50%;
+            vertical-align: middle;
         }
 
         td.header-right {
@@ -414,9 +421,13 @@
         body.template-technical h1.section-header { color: #146b52; border-color: #8ebbad; font-family: 'Courier New', monospace; font-size: 9pt; padding-top: 8pt; }
         body.template-technical .contact-info a { color: #146b52; }
         body.template-technical .photo-wrapper { width: 92px; height: 92px; border-radius: 8px; }
+
+        /* Font choices are intentionally limited to print-safe, readable families. */
+        body.font-clean, body.font-clean * { font-family: Arial, Helvetica, sans-serif !important; }
+        body.font-modern, body.font-modern * { font-family: 'Rubik', Arial, Helvetica, sans-serif !important; }
     </style>
 </head>
-<body class="template-{{ template_id }}">
+<body class="template-{{ template_id }} font-{{ resume.font_family | default('classic', true) }}">
     <table class="main-layout">
         <!-- HEADER ROW -->
         <tr class="header-row">

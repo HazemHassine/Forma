@@ -192,6 +192,25 @@ export default function ResumeEditor({ data, onChange }) {
     onChange(newData);
   };
 
+  const moveListItem = (path, fromIndex, delta) => {
+    const newData = JSON.parse(JSON.stringify(data));
+    const keys = path.split('.');
+    let list = newData;
+    for (const key of keys) list = list[isNaN(key) ? key : parseInt(key)];
+    const targetIndex = fromIndex + delta;
+    if (targetIndex < 0 || targetIndex >= list.length) return;
+    const [item] = list.splice(fromIndex, 1);
+    list.splice(targetIndex, 0, item);
+    onChange(newData);
+  };
+
+  const renderItemOrderControls = (path, index, total, label = 'item') => (
+    <div className="item-order-controls" aria-label={`Reorder ${label}`}>
+      <button type="button" className="item-order-btn" title={`Move ${label} up`} aria-label={`Move ${label} up`} disabled={index === 0} onClick={() => moveListItem(path, index, -1)}><ChevronUp size={14} /></button>
+      <button type="button" className="item-order-btn" title={`Move ${label} down`} aria-label={`Move ${label} down`} disabled={index === total - 1} onClick={() => moveListItem(path, index, 1)}><ChevronDown size={14} /></button>
+    </div>
+  );
+
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -356,7 +375,10 @@ export default function ResumeEditor({ data, onChange }) {
               <div className="list-item-card" key={i}>
                 <div className="list-item-header">
                   <span className="list-item-number">#{i + 1}</span>
-                  <button className="list-item-remove" onClick={() => removeListItem('education', i)}><X size={12} /> Remove</button>
+                  <div className="list-item-header-actions">
+                    {renderItemOrderControls('education', i, education.length, 'education entry')}
+                    <button className="list-item-remove" onClick={() => removeListItem('education', i)}><X size={12} /> Remove</button>
+                  </div>
                 </div>
                 <div className="editor-grid">
                   <div className="field-group">
@@ -395,7 +417,10 @@ export default function ResumeEditor({ data, onChange }) {
               <div className="list-item-card" key={i}>
                 <div className="list-item-header">
                   <span className="list-item-number">#{i + 1}</span>
-                  <button className="list-item-remove" onClick={() => removeListItem('work_experience', i)}><X size={12} /> Remove</button>
+                  <div className="list-item-header-actions">
+                    {renderItemOrderControls('work_experience', i, experience.length, 'experience')}
+                    <button className="list-item-remove" onClick={() => removeListItem('work_experience', i)}><X size={12} /> Remove</button>
+                  </div>
                 </div>
                 <div className="editor-grid">
                   <div className="field-group">
@@ -420,6 +445,7 @@ export default function ResumeEditor({ data, onChange }) {
                   <div className="bullet-list">
                     {(exp.bullets || []).map((bullet, j) => (
                       <div className="bullet-item" key={j}>
+                        {renderItemOrderControls(`work_experience.${i}.bullets`, j, (exp.bullets || []).length, 'bullet')}
                         <span className="bullet-marker">•</span>
                         <input
                           value={bullet}
@@ -467,7 +493,10 @@ export default function ResumeEditor({ data, onChange }) {
               <div className="list-item-card" key={i}>
                 <div className="list-item-header">
                   <span className="list-item-number">#{i + 1}</span>
-                  <button className="list-item-remove" onClick={() => removeListItem('projects', i)}><X size={12} /> Remove</button>
+                  <div className="list-item-header-actions">
+                    {renderItemOrderControls('projects', i, projects.length, 'project')}
+                    <button className="list-item-remove" onClick={() => removeListItem('projects', i)}><X size={12} /> Remove</button>
+                  </div>
                 </div>
                 <div className="editor-grid">
                   <div className="field-group">
@@ -492,6 +521,7 @@ export default function ResumeEditor({ data, onChange }) {
                   <div className="bullet-list">
                     {(proj.bullets || []).map((bullet, j) => (
                       <div className="bullet-item" key={j}>
+                        {renderItemOrderControls(`projects.${i}.bullets`, j, (proj.bullets || []).length, 'bullet')}
                         <span className="bullet-marker">•</span>
                         <input
                           value={bullet}
@@ -530,7 +560,10 @@ export default function ResumeEditor({ data, onChange }) {
               <div className="list-item-card" key={i}>
                 <div className="list-item-header">
                   <span className="list-item-number">#{i + 1}</span>
-                  <button className="list-item-remove" onClick={() => removeListItem('research', i)}><X size={12} /> Remove</button>
+                  <div className="list-item-header-actions">
+                    {renderItemOrderControls('research', i, research.length, 'research entry')}
+                    <button className="list-item-remove" onClick={() => removeListItem('research', i)}><X size={12} /> Remove</button>
+                  </div>
                 </div>
                 <div className="editor-grid">
                   <div className="field-group">
@@ -577,7 +610,10 @@ export default function ResumeEditor({ data, onChange }) {
               <div className="list-item-card" key={i}>
                 <div className="list-item-header">
                   <span className="list-item-number">#{i + 1}</span>
-                  <button className="list-item-remove" onClick={() => removeListItem('certificates', i)}><X size={12} /> Remove</button>
+                  <div className="list-item-header-actions">
+                    {renderItemOrderControls('certificates', i, certificates.length, 'certificate')}
+                    <button className="list-item-remove" onClick={() => removeListItem('certificates', i)}><X size={12} /> Remove</button>
+                  </div>
                 </div>
                 <div className="editor-grid">
                   <div className="field-group">
@@ -604,7 +640,10 @@ export default function ResumeEditor({ data, onChange }) {
               <div className="list-item-card" key={i}>
                 <div className="list-item-header">
                   <span className="list-item-number">#{i + 1}</span>
-                  <button className="list-item-remove" onClick={() => removeListItem('languages', i)}><X size={12} /> Remove</button>
+                  <div className="list-item-header-actions">
+                    {renderItemOrderControls('languages', i, languages.length, 'language')}
+                    <button className="list-item-remove" onClick={() => removeListItem('languages', i)}><X size={12} /> Remove</button>
+                  </div>
                 </div>
                 <div className="editor-grid">
                   <div className="field-group">
@@ -715,14 +754,17 @@ export default function ResumeEditor({ data, onChange }) {
             <div className="custom-field-card" key={idx}>
               <div className="field-header-row">
                 <span className="field-label" style={{ fontWeight: 650 }}>Custom Field #{idx + 1}</span>
-                <button
-                  type="button"
-                  className="field-remove-btn"
-                  title="Remove custom field"
-                  onClick={() => removeCustomContactField(idx)}
-                >
-                  <X size={12} />
-                </button>
+                <div className="list-item-header-actions">
+                  {renderItemOrderControls('personal_info.custom_fields', idx, pi.custom_fields.length, 'custom field')}
+                  <button
+                    type="button"
+                    className="field-remove-btn"
+                    title="Remove custom field"
+                    onClick={() => removeCustomContactField(idx)}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
               </div>
               <div className="custom-field-grid">
                 <div className="field-group">
@@ -933,6 +975,15 @@ function SkillsEditor({ skills, onChange }) {
     onChange(newSkills);
   };
 
+  const moveCategory = (index, delta) => {
+    const targetIndex = index + delta;
+    if (targetIndex < 0 || targetIndex >= safeSkills.length) return;
+    const newSkills = [...safeSkills];
+    const [category] = newSkills.splice(index, 1);
+    newSkills.splice(targetIndex, 0, category);
+    onChange(newSkills);
+  };
+
   const addSkill = (index) => {
     const val = (newSkillInputs[index] || '').trim();
     if (!val) return;
@@ -950,11 +1001,27 @@ function SkillsEditor({ skills, onChange }) {
     onChange(newSkills);
   };
 
+  const moveSkill = (catIndex, skillIndex, delta) => {
+    const items = safeSkills[catIndex]?.items || [];
+    const targetIndex = skillIndex + delta;
+    if (targetIndex < 0 || targetIndex >= items.length) return;
+    const newSkills = [...safeSkills];
+    const newItems = [...items];
+    const [skill] = newItems.splice(skillIndex, 1);
+    newItems.splice(targetIndex, 0, skill);
+    newSkills[catIndex] = { ...newSkills[catIndex], items: newItems };
+    onChange(newSkills);
+  };
+
   return (
     <>
       {safeSkills.map((catObj, catIdx) => (
         <div className="skill-category" key={catIdx}>
           <div className="skill-category-header">
+            <div className="item-order-controls" aria-label="Reorder skill category">
+              <button type="button" className="item-order-btn" title="Move category up" aria-label="Move category up" disabled={catIdx === 0} onClick={() => moveCategory(catIdx, -1)}><ChevronUp size={14} /></button>
+              <button type="button" className="item-order-btn" title="Move category down" aria-label="Move category down" disabled={catIdx === safeSkills.length - 1} onClick={() => moveCategory(catIdx, 1)}><ChevronDown size={14} /></button>
+            </div>
             <input
               value={catObj.category || ''}
               onChange={e => renameCategory(catIdx, e.target.value)}
@@ -966,6 +1033,10 @@ function SkillsEditor({ skills, onChange }) {
           <div className="skill-chips">
             {(catObj.items || []).map((skill, j) => (
               <span className="skill-chip" key={j}>
+                <span className="skill-chip-order">
+                  <button type="button" title="Move skill up" aria-label={`Move ${skill} up`} disabled={j === 0} onClick={() => moveSkill(catIdx, j, -1)}><ChevronUp size={10} /></button>
+                  <button type="button" title="Move skill down" aria-label={`Move ${skill} down`} disabled={j === (catObj.items || []).length - 1} onClick={() => moveSkill(catIdx, j, 1)}><ChevronDown size={10} /></button>
+                </span>
                 {skill}
                 <button className="skill-chip-remove" onClick={() => removeSkill(catIdx, j)}><X size={10} /></button>
               </span>
