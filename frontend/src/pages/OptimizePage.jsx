@@ -116,6 +116,7 @@ export default function OptimizePage() {
   const [targetRole, setTargetRole] = useState('');
   const [company, setCompany] = useState('');
   const [instructions, setInstructions] = useState('');
+  const [includeContext, setIncludeContext] = useState(true);
 
   // States
   const [loading, setLoading] = useState(false);
@@ -176,6 +177,7 @@ export default function OptimizePage() {
         targetRole,
         company,
         instructions,
+        includeContext,
       });
 
       const merged = JSON.parse(JSON.stringify(data.original));
@@ -219,6 +221,7 @@ export default function OptimizePage() {
         strengths: data.strengths || [],
         gaps: data.gaps || [],
         keywords: data.keywords_used || [],
+        contextEvidenceUsed: data.context_evidence_used || [],
       });
       localStorage.setItem('activeTailoringDraft', JSON.stringify({
         draftVersionId: draft.id,
@@ -365,6 +368,16 @@ export default function OptimizePage() {
                   {!!insights.strengths.length && <div><span>Strong matches</span><ul>{insights.strengths.map(item => <li key={item}>{item}</li>)}</ul></div>}
                   {!!insights.gaps.length && <div className="gap-list"><span>Gaps kept honest</span><ul>{insights.gaps.map(item => <li key={item}>{item}</li>)}</ul></div>}
                   {!!insights.keywords.length && <div className="keyword-list">{insights.keywords.map(item => <span key={item}>{item}</span>)}</div>}
+                  {!!insights.contextEvidenceUsed?.length && (
+                    <div className="context-evidence-brief">
+                      <span>Context Vault evidence used</span>
+                      <ul>
+                        {insights.contextEvidenceUsed.map(item => (
+                          <li key={item}><Sparkles size={11} className="evidence-sparkle" /> {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
               {!changesExist && (
@@ -490,6 +503,18 @@ export default function OptimizePage() {
         <div className="optimize-jd-area">
           <label>What should the AI prioritize? <span>optional</span></label>
           <textarea value={instructions} onChange={e => setInstructions(e.target.value)} placeholder="For example: emphasize backend and RAG work; keep the tone technical and concise." rows={3} />
+        </div>
+        <div className="optimize-context-toggle-row">
+          <label className="optimize-context-checkbox" title="Cross-reference against Candidate Context Vault for deep achievements">
+            <input
+              type="checkbox"
+              checked={includeContext}
+              onChange={e => setIncludeContext(e.target.checked)}
+              disabled={loading}
+            />
+            <Sparkles size={14} className="sparkle-active" />
+            <span>Enable Candidate Context Vault (injects verified background facts and scale metrics)</span>
+          </label>
         </div>
         <Button variant="primary" size="lg" onClick={handleOptimize} disabled={loading || !jobDescription.trim()} className="optimize-btn">
           {loading ? <><Loader size={18} className="spin" /> Mapping evidence to the role...</> : <><Sparkles size={18} /> Create tailored draft</>}

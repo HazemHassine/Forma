@@ -9,7 +9,7 @@ import Button from '../components/Button';
 import './EditorPage.css';
 
 const EMPTY_RESUME = {
-  personal_info: { name: '', title: '', address: '', phone: '', email: '', github: '', linkedin: '', photo_path: '' },
+  personal_info: { name: '', title: '', address: '', phone: '', email: '', website: '', github: '', linkedin: '', photo_path: '', custom_fields: [] },
   about_me: '',
   education: [],
   work_experience: [],
@@ -19,6 +19,17 @@ const EMPTY_RESUME = {
   certificates: [],
   languages: [],
   references: '',
+  section_order: [
+    'about_me',
+    'work_experience',
+    'education',
+    'projects',
+    'research',
+    'skills',
+    'certificates',
+    'languages',
+    'references',
+  ],
 };
 
 const FALLBACK_TEMPLATES = [

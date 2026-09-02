@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 from typing import Any, TypedDict
@@ -67,13 +68,15 @@ OPTIMIZE_SYSTEM_PROMPT = f"""You are the senior member of a coordinated hiring t
 
 WORKFLOW:
 1. Silently identify the role's core outcomes, required skills, terminology, seniority, and likely screening criteria.
-2. Map every useful requirement to evidence that already exists in the resume.
+2. Map every useful requirement to evidence that exists in the candidate's resume or the verified CANDIDATE CONTEXT VAULT.
 3. Rewrite only where that mapping is supported. Prefer concrete evidence over keyword repetition.
 4. Audit the result for invented claims, altered meaning, vague filler, and duplicated phrasing.
 
 NON-NEGOTIABLE RULES:
-- Preserve every fact. Never invent or infer experience, tools, metrics, responsibilities, proficiency, or outcomes.
-- Never add a job-description keyword unless the source resume contains evidence for it.
+- Preserve every fact. Candidate facts may come from either the SOURCE RESUME or the verified CANDIDATE CONTEXT VAULT. Never invent or infer experience, tools, metrics, responsibilities, proficiency, or outcomes absent from both.
+- When CANDIDATE CONTEXT VAULT is provided, actively draw upon its verified achievements, scale metrics, and technical accomplishments to enrich weak resume bullets or tailor the profile.
+- Report any vault items you used in 'context_evidence_used'.
+- Never add a job-description keyword unless supported by the resume or context vault.
 - Keep the exact number and order of work, project, education, research, skill, certificate, and language entries. Identity and ordering must remain stable for safe review.
 - Do not modify personal_info, education, skills, certificates, languages, references, names, employers, titles, dates, locations, project stacks, or research focus.
 - You may rewrite about_me, work_experience.bullets, project descriptions/bullets, and research descriptions.
@@ -84,11 +87,17 @@ NON-NEGOTIABLE RULES:
 
 Return ONLY valid JSON with this exact top-level structure:
 {{
-  "resume": <the complete resume object with the exact input schema>,
+  "resume": {{
+    "about_me": <tailored 2-3 sentence profile>,
+    "work_experience": [{{"bullets": [<concise tailored bullet points matching original count>]}}],
+    "projects": [{{"description": <tailored impact description>, "bullets": [<tailored bullets matching original count>]}}],
+    "research": [{{"description": <tailored research description>}}]
+  }},
   "match_summary": <one short sentence explaining the tailoring strategy>,
   "strengths": [<up to 4 evidence-backed matches>],
   "gaps": [<up to 4 important requirements not evidenced in the resume>],
-  "keywords_used": [<up to 10 job-description terms actually supported and used>]
+  "keywords_used": [<up to 10 job-description terms actually supported and used>],
+  "context_evidence_used": [<up to 5 specific facts or metrics incorporated from the context vault>]
 }}
 No markdown, code fences, commentary, or additional keys.
 """
@@ -213,6 +222,7 @@ def suggest_improvement(
     current_content: str,
     job_description: str = None,
     feedback: str = None,
+    context_data: str = None,
     provider: str = "gemini",
 ) -> str:
     """Use the selected provider to improve a resume section."""
@@ -223,6 +233,8 @@ def suggest_improvement(
         user_message += f"\n\nJob description to tailor for:\n{job_description}"
     if feedback:
         user_message += f"\n\nSpecific user feedback/instructions to incorporate:\n{feedback}"
+    if context_data and context_data.strip():
+        user_message += f"\n\nCANDIDATE CONTEXT VAULT (Use authentic details from this data):\n{context_data.strip()}"
 
     state = AI_GRAPH.invoke(
         {
@@ -243,6 +255,7 @@ def optimize_resume(
     target_role: str = None,
     company: str = None,
     instructions: str = None,
+    context_data: str = None,
     provider: str = "gemini",
 ) -> dict:
     """Optimize a resume with the selected AI provider."""
@@ -251,23 +264,77 @@ def optimize_resume(
         "company": company or "Not provided",
         "user_instructions": instructions or "No additional instructions",
     }
-    user_message = (
+    user_parts = [
         "TAILORING CONTEXT:\n"
-        f"{json.dumps(context, indent=2)}\n\n"
-        "SOURCE RESUME (the only source of candidate facts):\n"
-        f"{json.dumps(resume_data, indent=2)}\n\n"
-        "JOB DESCRIPTION:\n"
-        f"{job_description}"
+        f"{json.dumps(context, indent=2)}",
+        "SOURCE RESUME:\n"
+        f"{json.dumps(resume_data, indent=2)}",
+    ]
+    if context_data and context_data.strip():
+        user_parts.append(
+            f"CANDIDATE CONTEXT VAULT (Authorized second source of verified facts and metrics):\n{context_data.strip()}"
+        )
+    user_parts.append(
+        f"JOB DESCRIPTION:\n{job_description}"
     )
+    user_message = "\n\n".join(user_parts)
 
     output_schema = {
         "type": "object",
         "properties": {
-            "resume": {"type": "object"},
+            "resume": {
+                "type": "object",
+                "properties": {
+                    "about_me": {"type": "string"},
+                    "work_experience": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "company": {"type": "string"},
+                                "role": {"type": "string"},
+                                "bullets": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                            },
+                            "required": ["bullets"],
+                        },
+                    },
+                    "projects": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "description": {"type": "string"},
+                                "bullets": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                            },
+                            "required": ["description", "bullets"],
+                        },
+                    },
+                    "research": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {"type": "string"},
+                                "description": {"type": "string"},
+                            },
+                            "required": ["description"],
+                        },
+                    },
+                },
+                "required": ["about_me"],
+            },
             "match_summary": {"type": "string"},
             "strengths": {"type": "array", "items": {"type": "string"}},
             "gaps": {"type": "array", "items": {"type": "string"}},
             "keywords_used": {"type": "array", "items": {"type": "string"}},
+            "context_evidence_used": {"type": "array", "items": {"type": "string"}},
         },
         "required": [
             "resume",
@@ -293,39 +360,50 @@ def optimize_resume(
     if not isinstance(optimized, dict) or not isinstance(optimized.get("resume"), dict):
         raise ValueError("AI response did not contain the required resume object. Please try again.")
 
-    # Guard immutable identity fields even if the model ignores an instruction.
-    protected_sections = [
-        "personal_info", "education", "skills", "certificates", "languages", "references"
-    ]
-    for section in protected_sections:
-        optimized["resume"][section] = resume_data[section]
+    optimized.setdefault("context_evidence_used", [])
 
-    for index, original in enumerate(resume_data.get("work_experience", [])):
-        if index >= len(optimized["resume"].get("work_experience", [])):
-            optimized["resume"]["work_experience"] = resume_data["work_experience"]
-            break
-        candidate = optimized["resume"]["work_experience"][index]
-        for field in ("company", "location", "role", "dates"):
-            candidate[field] = original[field]
-        if len(candidate.get("bullets", [])) != len(original.get("bullets", [])):
-            candidate["bullets"] = original["bullets"]
+    # Start with a deep copy of the source resume data so all fields, structure,
+    # and unedited sections remain completely intact and valid.
+    final_resume = copy.deepcopy(resume_data)
+    model_resume = optimized.get("resume") or {}
 
-    for index, original in enumerate(resume_data.get("projects", [])):
-        if index >= len(optimized["resume"].get("projects", [])):
-            optimized["resume"]["projects"] = resume_data["projects"]
-            break
-        candidate = optimized["resume"]["projects"][index]
-        for field in ("name", "type", "stack", "extra_info"):
-            candidate[field] = original.get(field)
-        if len(candidate.get("bullets", [])) != len(original.get("bullets", [])):
-            candidate["bullets"] = original["bullets"]
+    # 1. Tailor about_me if provided by the model
+    if model_resume.get("about_me"):
+        final_resume["about_me"] = str(model_resume["about_me"]).strip()
 
-    for index, original in enumerate(resume_data.get("research", [])):
-        if index >= len(optimized["resume"].get("research", [])):
-            optimized["resume"]["research"] = resume_data["research"]
-            break
-        candidate = optimized["resume"]["research"][index]
-        for field in ("title", "institution", "location", "date", "focus"):
-            candidate[field] = original[field]
+    # 2. Update work_experience bullets while strictly preserving company, location, role, dates
+    original_work = resume_data.get("work_experience", [])
+    model_work = model_resume.get("work_experience", [])
+    if isinstance(model_work, list):
+        for index, original in enumerate(original_work):
+            if index < len(model_work) and isinstance(model_work[index], dict):
+                candidate = model_work[index]
+                bullets = candidate.get("bullets")
+                if isinstance(bullets, list) and len(bullets) == len(original.get("bullets", [])):
+                    final_resume["work_experience"][index]["bullets"] = [str(b).strip() for b in bullets]
 
+    # 3. Update projects description and bullets while preserving name, type, stack, extra_info
+    original_projects = resume_data.get("projects", [])
+    model_projects = model_resume.get("projects", [])
+    if isinstance(model_projects, list):
+        for index, original in enumerate(original_projects):
+            if index < len(model_projects) and isinstance(model_projects[index], dict):
+                candidate = model_projects[index]
+                if candidate.get("description"):
+                    final_resume["projects"][index]["description"] = str(candidate["description"]).strip()
+                bullets = candidate.get("bullets")
+                if isinstance(bullets, list) and len(bullets) == len(original.get("bullets", [])):
+                    final_resume["projects"][index]["bullets"] = [str(b).strip() for b in bullets]
+
+    # 4. Update research description while preserving title, institution, location, date, focus
+    original_research = resume_data.get("research", [])
+    model_research = model_resume.get("research", [])
+    if isinstance(model_research, list):
+        for index, original in enumerate(original_research):
+            if index < len(model_research) and isinstance(model_research[index], dict):
+                candidate = model_research[index]
+                if candidate.get("description"):
+                    final_resume["research"][index]["description"] = str(candidate["description"]).strip()
+
+    optimized["resume"] = final_resume
     return optimized

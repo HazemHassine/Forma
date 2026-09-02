@@ -98,6 +98,7 @@ async function request(endpoint, options = {}) {
 export const resumeApi = {
   templates: () => request('/resumes/templates'),
   list: () => request('/resumes'),
+  listVersions: () => request('/resumes'),
   get: (id) => request(`/resumes/${id}`),
   create: (data) => request('/resumes', { method: 'POST', body: data }),
   update: (id, data) => request(`/resumes/${id}`, { method: 'PUT', body: data }),
@@ -120,7 +121,16 @@ export const jobApi = {
 
 // AI endpoints
 export const aiApi = {
-  suggest: (provider, data) => request(`${aiProviderPath(provider)}/suggest`, { method: 'POST', body: data }),
+  suggest: (provider, data) => request(`${aiProviderPath(provider)}/suggest`, {
+    method: 'POST',
+    body: {
+      section_type: data.section_type,
+      current_content: data.current_content,
+      job_description: data.job_description || null,
+      feedback: data.feedback || null,
+      include_context: data.include_context !== false,
+    },
+  }),
   optimize: (provider, resumeVersionId, jobDescription, context = {}) => request(`${aiProviderPath(provider)}/optimize`, {
     method: 'POST',
     body: {
@@ -129,6 +139,7 @@ export const aiApi = {
       target_role: context.targetRole || null,
       company: context.company || null,
       instructions: context.instructions || null,
+      include_context: context.includeContext !== false,
     },
   }),
 };
@@ -160,6 +171,61 @@ export const photoApi = {
     return request('/photos/upload', { method: 'POST', body: formData });
   },
   getUrl: (path) => path || '',
+};
+
+export const critiqueApi = {
+  create: (provider, data) => request(`/cv-critique/${aiProviderSegment(provider)}`, {
+    method: 'POST',
+    body: {
+      resume_version_id: data.resume_version_id,
+      target_role: data.target_role || null,
+      job_description: data.job_description || null,
+      instructions: data.instructions || null,
+      include_context: data.include_context !== false,
+    },
+  }),
+  listForVersion: (versionId) => request(`/cv-critique/version/${versionId}`),
+  get: (id) => request(`/cv-critique/${id}`),
+  delete: (id) => request(`/cv-critique/${id}`, { method: 'DELETE' }),
+};
+
+export const contextApi = {
+  listSources: (activeOnly = false) => request(`/context/sources?active_only=${activeOnly}`),
+  addSource: (data) => request('/context/sources', { method: 'POST', body: data }),
+  getSource: (id) => request(`/context/sources/${id}`),
+  updateSource: (id, data) => request(`/context/sources/${id}`, { method: 'PUT', body: data }),
+  deleteSource: (id) => request(`/context/sources/${id}`, { method: 'DELETE' }),
+
+  listItems: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.category && params.category !== 'all') search.set('category', params.category);
+    if (params.activeOnly) search.set('active_only', 'true');
+    if (params.query) search.set('query', params.query);
+    const qs = search.toString();
+    return request(`/context/items${qs ? `?${qs}` : ''}`);
+  },
+  addItem: (data) => request('/context/items', { method: 'POST', body: data }),
+  getItem: (id) => request(`/context/items/${id}`),
+  updateItem: (id, data) => request(`/context/items/${id}`, { method: 'PUT', body: data }),
+  toggleItem: (id) => request(`/context/items/${id}/toggle`, { method: 'POST' }),
+  deleteItem: (id) => request(`/context/items/${id}`, { method: 'DELETE' }),
+
+  getProfile: () => request('/context/profile'),
+  getStats: () => request('/context/stats'),
+  synthesize: (provider, data = {}) => request(`/context/${aiProviderSegment(provider)}/synthesize`, {
+    method: 'POST',
+    body: data,
+  }),
+  preview: (params = {}) => {
+    const search = new URLSearchParams();
+    if (params.targetRole) search.set('target_role', params.targetRole);
+    if (params.jobDescription) search.set('job_description', params.jobDescription);
+    if (params.company) search.set('company', params.company);
+    if (params.maxItems) search.set('max_items', params.maxItems);
+    const qs = search.toString();
+    return request(`/context/preview${qs ? `?${qs}` : ''}`);
+  },
+  importResume: (resumeId) => request(`/context/import-resume/${resumeId}`, { method: 'POST' }),
 };
 
 export const systemApi = {

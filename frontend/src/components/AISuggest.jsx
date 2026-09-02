@@ -10,6 +10,7 @@ export default function AISuggest({ sectionType, currentContent, onAccept }) {
   const [isOpen, setIsOpen] = useState(false);
   const [jobDescription, setJobDescription] = useState('');
   const [suggestion, setSuggestion] = useState('');
+  const [includeContext, setIncludeContext] = useState(true);
   const [loading, setLoading] = useState(false);
   const addToast = useToast();
   const { aiProvider } = useAIProvider();
@@ -27,6 +28,7 @@ export default function AISuggest({ sectionType, currentContent, onAccept }) {
         section_type: sectionType,
         current_content: typeof currentContent === 'string' ? currentContent : JSON.stringify(currentContent),
         job_description: jobDescription || undefined,
+        include_context: includeContext,
       });
       setSuggestion(result.suggestion);
     } catch (err) {
@@ -79,6 +81,20 @@ export default function AISuggest({ sectionType, currentContent, onAccept }) {
               placeholder="Paste a job description to tailor the suggestion..."
               rows={3}
             />
+          </div>
+
+          <div className="ai-context-vault-option">
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', color: '#4f46e5', cursor: 'pointer', marginBottom: '14px' }}>
+              <input
+                type="checkbox"
+                checked={includeContext}
+                onChange={e => setIncludeContext(e.target.checked)}
+                disabled={loading}
+                style={{ cursor: 'pointer', accentColor: '#4f46e5' }}
+              />
+              <Sparkles size={12} />
+              <span>Reference Candidate Context Vault</span>
+            </label>
           </div>
 
           {!loading && !suggestion && (

@@ -12,6 +12,8 @@
 *.db-wal
 /backend/static/*
 !/backend/static/.gitkeep
+!/backend/static/fonts/
+!/backend/static/fonts/**
 
 # Private source documents and generated exports
 /cv/

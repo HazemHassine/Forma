@@ -87,6 +87,23 @@ def analyze_cover_letter(
     if not resume:
         raise HTTPException(status_code=404, detail="Resume version not found")
 
+    context_str = None
+    try:
+        import context_engine
+        context_conn = get_db()
+        try:
+            context_str = context_engine.assemble_context(
+                context_conn,
+                target_role=payload.position,
+                job_description=payload.job_post,
+                company=payload.company,
+                max_items=15,
+            )
+        finally:
+            context_conn.close()
+    except Exception:
+        context_str = None
+
     try:
         result = run_cover_letter_analysis(
             resume_data=json.loads(resume["data"]),
@@ -95,6 +112,7 @@ def analyze_cover_letter(
             position=payload.position,
             source_url=payload.source_url,
             instructions=payload.instructions,
+            context_data=context_str,
             provider=provider.value,
         )
         return CoverLetterAnalysis(**result)
@@ -168,6 +186,23 @@ def create_cover_letter(
         selected_angle_id=effective_angle_id,
     )
 
+    context_str = None
+    try:
+        import context_engine
+        context_conn = get_db()
+        try:
+            context_str = context_engine.assemble_context(
+                context_conn,
+                target_role=payload.position,
+                job_description=payload.job_post,
+                company=payload.company,
+                max_items=15,
+            )
+        finally:
+            context_conn.close()
+    except Exception:
+        context_str = None
+
     try:
         generated = generate_cover_letter(
             resume_data=resume_data,
@@ -181,6 +216,7 @@ def create_cover_letter(
             research=research_data,
             answers=answers_data,
             selected_angle_id=effective_angle_id,
+            context_data=context_str,
             provider=provider.value,
         )
         content = CoverLetterContent(**generated)

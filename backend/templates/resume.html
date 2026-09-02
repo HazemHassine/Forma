@@ -40,17 +40,17 @@
 
         /* Header row */
         tr.header-row td {
-            padding-top: 18pt;
+            padding-top: 10pt;
         }
 
         td.header-left {
-            width: 66%;
+            width: 50%;
         }
 
         td.header-right {
-            width: 34%;
+            width: 50%;
             text-align: right;
-            padding-top: 18pt;
+            padding-top: 10pt;
         }
 
         .header-left-container {
@@ -104,11 +104,20 @@
             line-height: 1.6;
         }
 
+        .contact-info div {
+            overflow-wrap: break-word;
+            word-break: normal;
+            hyphens: none;
+        }
+
         .contact-info a {
             font-family: Arial, Helvetica, sans-serif;
             font-weight: 700;
             color: #1155cc;
             text-decoration: underline;
+            overflow-wrap: break-word;
+            word-break: normal;
+            hyphens: none;
         }
 
         .contact-info .label {
@@ -420,121 +429,163 @@
                     {% endif %}
                     <div class="name-title-wrapper">
                         <p class="header-name">{{ resume.personal_info.name }}</p>
-                        <p class="header-subtitle">{{ resume.personal_info.title }}</p>
+                        {% if resume.personal_info.title %}<p class="header-subtitle">{{ resume.personal_info.title }}</p>{% endif %}
                     </div>
                 </div>
             </td>
             <td class="header-right">
                 <div class="contact-info">
-                    <div>{{ resume.personal_info.address }}</div>
-                    <div>{{ resume.personal_info.phone }}</div>
-                    <div><a href="mailto:{{ resume.personal_info.email }}">{{ resume.personal_info.email }}</a></div>
-                    <div><a href="https://{{ resume.personal_info.github }}">{{ resume.personal_info.github }}</a></div>
-                    <div><a href="https://{{ resume.personal_info.linkedin }}">{{ resume.personal_info.linkedin }}</a></div>
+                    {% if resume.personal_info.address %}<div>{{ resume.personal_info.address }}</div>{% endif %}
+                    {% if resume.personal_info.phone %}<div>{{ resume.personal_info.phone }}</div>{% endif %}
+                    {% if resume.personal_info.email %}<div><a href="mailto:{{ resume.personal_info.email }}">{{ resume.personal_info.email }}</a></div>{% endif %}
+                    {% if resume.personal_info.website %}<div><a href="{% if '://' in resume.personal_info.website %}{{ resume.personal_info.website }}{% else %}https://{{ resume.personal_info.website }}{% endif %}">{{ resume.personal_info.website }}</a></div>{% endif %}
+                    {% if resume.personal_info.github %}<div><a href="{% if '://' in resume.personal_info.github %}{{ resume.personal_info.github }}{% else %}https://{{ resume.personal_info.github }}{% endif %}">{{ resume.personal_info.github }}</a></div>{% endif %}
+                    {% if resume.personal_info.linkedin %}<div><a href="{% if '://' in resume.personal_info.linkedin %}{{ resume.personal_info.linkedin }}{% else %}https://{{ resume.personal_info.linkedin }}{% endif %}">{{ resume.personal_info.linkedin }}</a></div>{% endif %}
+                    {% if resume.personal_info.custom_fields %}
+                        {% for field in resume.personal_info.custom_fields %}
+                            {% if field.value %}
+                                <div>
+                                    {% if field.url %}
+                                        <a href="{% if '://' in field.url %}{{ field.url }}{% else %}https://{{ field.url }}{% endif %}">{% if field.label %}{{ field.label }}: {% endif %}{{ field.value }}</a>
+                                    {% else %}
+                                        {% if field.label %}<strong>{{ field.label }}:</strong> {% endif %}{{ field.value }}
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
                 </div>
             </td>
         </tr>
 
+    {% macro render_about_me(is_first) %}
+    <h1 class="section-header {% if is_first %}first-section{% endif %}">About Me</h1>
+    <p class="about-me-text">{{ resume.about_me }}</p>
+    {% endmacro %}
+
+    {% macro render_education(is_first) %}
+    <h1 class="section-header {% if is_first %}first-section{% endif %}">Education</h1>
+    {% for edu in resume.education %}
+    <div style="padding-bottom: 6pt;">
+        <h2 class="entry-title">{{ edu.institution }}, <span class="entry-location">{{ edu.location }}</span></h2>
+        <p class="entry-subtitle">{{ edu.degree }}</p>
+        <p class="entry-dates">{{ edu.dates }}</p>
+        {% if edu.details %}
+        <p class="entry-details">{{ edu.details }}</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endmacro %}
+
+    {% macro render_work_experience(is_first) %}
+    <h1 class="section-header {% if is_first %}first-section{% endif %}">Work Experience</h1>
+    {% for job in resume.work_experience %}
+    <div style="padding-bottom: 6pt;">
+        <h2 class="entry-title">{{ job.company }}, <span class="entry-location">{{ job.location }}</span></h2>
+        <p class="entry-subtitle">{{ job.role }}</p>
+        <p class="entry-dates">{{ job.dates }}</p>
+        <ul class="entry-bullets">
+            {% for bullet in job.bullets %}
+            <li>{{ bullet }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+    {% endmacro %}
+
+    {% macro render_projects(is_first) %}
+    <h1 class="section-header {% if is_first %}first-section{% endif %}">Projects</h1>
+    {% for project in resume.projects %}
+    <div style="padding-bottom: 6pt;">
+        <h2 class="entry-title">{{ project.name }} <span class="project-type">| {{ project.type }}</span></h2>
+        <p class="entry-description">{{ project.description }}</p>
+        <p class="entry-stack"><strong>Stack:</strong> {{ project.stack }}</p>
+        {% if project.extra_info %}
+        <p class="entry-extra">{{ project.extra_info }}</p>
+        {% endif %}
+        <ul class="entry-bullets">
+            {% for bullet in project.bullets %}
+            <li>{{ bullet }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+    {% endmacro %}
+
+    {% macro render_research(is_first) %}
+    <h1 class="section-header {% if is_first %}first-section{% endif %}">Research</h1>
+    {% for entry in resume.research %}
+    <div style="padding-bottom: 6pt;">
+        <h2 class="entry-title">&ldquo;{{ entry.title }}&rdquo;</h2>
+        <p class="entry-subtitle">{{ entry.institution }}, <span class="entry-location">{{ entry.location }}</span></p>
+        <p class="entry-dates">{{ entry.date }}</p>
+        <p class="entry-details">{{ entry.description }}</p>
+        <p class="research-focus"><strong>Focus:</strong> {{ entry.focus }}</p>
+    </div>
+    {% endfor %}
+    {% endmacro %}
+
+    {% macro render_skills(is_first) %}
+    <h1 class="section-header {% if is_first %}first-section{% endif %}">Skills</h1>
+    {% for skill in resume.skills %}
+    <div>
+        <p class="skill-category-name">{{ skill.category }}</p>
+        <ul class="skill-items">
+            {% for item in skill["items"] %}
+            <li>{{ item }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+    {% endmacro %}
+
+    {% macro render_languages(is_first) %}
+    <h1 class="section-header {% if is_first %}first-section{% endif %}">Languages</h1>
+    <ul class="languages-list">
+        {% for lang in resume.languages %}
+        <li><strong>{{ lang.language }}</strong> ({{ lang.level }})</li>
+        {% endfor %}
+    </ul>
+    {% endmacro %}
+
+    {% macro render_certificates(is_first) %}
+    <h1 class="section-header {% if is_first %}first-section{% endif %}">Certificates</h1>
+    {% for cert in resume.certificates %}
+    <div class="certificate-entry">
+        <p class="certificate-name">{{ cert.name }}</p>
+        <p class="certificate-issuer">{{ cert.issuer }}</p>
+    </div>
+    {% endfor %}
+    {% endmacro %}
+
+    {% macro render_references(is_first) %}
+    <h1 class="section-header {% if is_first %}first-section{% endif %}">References</h1>
+    <p class="references-text">{{ resume.references }}</p>
+    {% endmacro %}
+
         <!-- CONTENT ROW -->
         <tr>
             <td class="content-left">
-                <!-- ABOUT ME -->
-                <h1 class="section-header first-section">About Me</h1>
-                <p class="about-me-text">{{ resume.about_me }}</p>
-
-                <!-- EDUCATION -->
-                <h1 class="section-header">Education</h1>
-                {% for edu in resume.education %}
-                <div style="padding-bottom: 6pt;">
-                    <h2 class="entry-title">{{ edu.institution }}, <span class="entry-location">{{ edu.location }}</span></h2>
-                    <p class="entry-subtitle">{{ edu.degree }}</p>
-                    <p class="entry-dates">{{ edu.dates }}</p>
-                    {% if edu.details %}
-                    <p class="entry-details">{{ edu.details }}</p>
+                {% for s in section_order if s in ['about_me', 'education', 'work_experience', 'projects', 'research'] and resume[s] %}
+                    {% set is_first = loop.first %}
+                    {% if s == 'about_me' %}{{ render_about_me(is_first) }}
+                    {% elif s == 'education' %}{{ render_education(is_first) }}
+                    {% elif s == 'work_experience' %}{{ render_work_experience(is_first) }}
+                    {% elif s == 'projects' %}{{ render_projects(is_first) }}
+                    {% elif s == 'research' %}{{ render_research(is_first) }}
                     {% endif %}
-                </div>
-                {% endfor %}
-
-                <!-- WORK EXPERIENCE -->
-                <h1 class="section-header">Work Experience</h1>
-                {% for job in resume.work_experience %}
-                <div style="padding-bottom: 6pt;">
-                    <h2 class="entry-title">{{ job.company }}, <span class="entry-location">{{ job.location }}</span></h2>
-                    <p class="entry-subtitle">{{ job.role }}</p>
-                    <p class="entry-dates">{{ job.dates }}</p>
-                    <ul class="entry-bullets">
-                        {% for bullet in job.bullets %}
-                        <li>{{ bullet }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endfor %}
-
-                <!-- PROJECTS -->
-                <h1 class="section-header">Projects</h1>
-                {% for project in resume.projects %}
-                <div style="padding-bottom: 6pt;">
-                    <h2 class="entry-title">{{ project.name }} <span class="project-type">| {{ project.type }}</span></h2>
-                    <p class="entry-description">{{ project.description }}</p>
-                    <p class="entry-stack"><strong>Stack:</strong> {{ project.stack }}</p>
-                    {% if project.extra_info %}
-                    <p class="entry-extra">{{ project.extra_info }}</p>
-                    {% endif %}
-                    <ul class="entry-bullets">
-                        {% for bullet in project.bullets %}
-                        <li>{{ bullet }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endfor %}
-
-                <!-- RESEARCH -->
-                <h1 class="section-header">Research</h1>
-                {% for entry in resume.research %}
-                <div style="padding-bottom: 6pt;">
-                    <h2 class="entry-title">&ldquo;{{ entry.title }}&rdquo;</h2>
-                    <p class="entry-subtitle">{{ entry.institution }}, <span class="entry-location">{{ entry.location }}</span></p>
-                    <p class="entry-dates">{{ entry.date }}</p>
-                    <p class="entry-details">{{ entry.description }}</p>
-                    <p class="research-focus"><strong>Focus:</strong> {{ entry.focus }}</p>
-                </div>
                 {% endfor %}
             </td>
 
             <td class="content-right">
-                <!-- SKILLS -->
-                <h1 class="section-header first-section">Skills</h1>
-                {% for skill in resume.skills %}
-                <div>
-                    <p class="skill-category-name">{{ skill.category }}</p>
-                    <ul class="skill-items">
-                        {% for item in skill["items"] %}
-                        <li>{{ item }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
+                {% for s in section_order if s in ['skills', 'languages', 'certificates', 'references'] and resume[s] %}
+                    {% set is_first = loop.first %}
+                    {% if s == 'skills' %}{{ render_skills(is_first) }}
+                    {% elif s == 'languages' %}{{ render_languages(is_first) }}
+                    {% elif s == 'certificates' %}{{ render_certificates(is_first) }}
+                    {% elif s == 'references' %}{{ render_references(is_first) }}
+                    {% endif %}
                 {% endfor %}
-
-                <!-- LANGUAGES -->
-                <h1 class="section-header">Languages</h1>
-                <ul class="languages-list">
-                    {% for lang in resume.languages %}
-                    <li><strong>{{ lang.language }}</strong> ({{ lang.level }})</li>
-                    {% endfor %}
-                </ul>
-
-                <!-- CERTIFICATES -->
-                <h1 class="section-header">Certificates</h1>
-                {% for cert in resume.certificates %}
-                <div class="certificate-entry">
-                    <p class="certificate-name">{{ cert.name }}</p>
-                    <p class="certificate-issuer">{{ cert.issuer }}</p>
-                </div>
-                {% endfor %}
-
-                <!-- REFERENCES -->
-                <h1 class="section-header">References</h1>
-                <p class="references-text">{{ resume.references }}</p>
             </td>
         </tr>
     </table>

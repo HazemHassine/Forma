@@ -59,3 +59,65 @@ CREATE TABLE IF NOT EXISTS profile_assets (
     data BLOB NOT NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS cv_critiques (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    resume_version_id INTEGER NOT NULL,
+    target_role TEXT,
+    job_description TEXT,
+    provider TEXT NOT NULL DEFAULT 'gemini',
+    overall_score INTEGER NOT NULL,
+    summary TEXT NOT NULL,
+    critique_data TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (resume_version_id) REFERENCES resume_versions(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cv_critiques_version
+ON cv_critiques (resume_version_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS context_sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    source_type TEXT NOT NULL DEFAULT 'dump',
+    content TEXT NOT NULL,
+    url TEXT,
+    is_active BOOLEAN DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_context_sources_active
+ON context_sources (is_active, id DESC);
+
+CREATE TABLE IF NOT EXISTS context_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id INTEGER,
+    category TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    tags TEXT NOT NULL DEFAULT '[]',
+    is_active BOOLEAN DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (source_id) REFERENCES context_sources(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_context_items_category
+ON context_items (category);
+
+CREATE INDEX IF NOT EXISTS idx_context_items_active
+ON context_items (is_active, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_context_items_source
+ON context_items (source_id);
+
+CREATE TABLE IF NOT EXISTS context_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    summary TEXT NOT NULL,
+    key_differentiators TEXT NOT NULL DEFAULT '[]',
+    target_roles TEXT NOT NULL DEFAULT '[]',
+    stats TEXT NOT NULL DEFAULT '{}',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+

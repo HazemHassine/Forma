@@ -28,6 +28,10 @@ DB_PATH = DATA_DIR / "resume.db"
 def ensure_data_layout() -> None:
     """Create private runtime directories and copy legacy assets once."""
     DOCUMENTS_DIR.mkdir(parents=True, exist_ok=True)
+    fonts_source = BACKEND_DIR / "static" / "fonts"
+    fonts_dest = STATIC_DIR / "fonts"
+    if fonts_source.is_dir() and not fonts_dest.exists():
+        shutil.copytree(fonts_source, fonts_dest)
 
     legacy_assets = (
         (BACKEND_DIR / "static" / "profile.jpg", STATIC_DIR / "profile.jpg"),
