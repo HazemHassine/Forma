@@ -162,6 +162,13 @@ export const photoApi = {
   getUrl: (path) => path || '',
 };
 
+export const critiqueApi = {
+  create: (provider, data) => request(`/cv-critique/${aiProviderSegment(provider)}`, { method: 'POST', body: data }),
+  listForVersion: (versionId) => request(`/cv-critique/version/${versionId}`),
+  get: (id) => request(`/cv-critique/${id}`),
+  delete: (id) => request(`/cv-critique/${id}`, { method: 'DELETE' }),
+};
+
 export const systemApi = {
   status: () => request('/system/status'),
 };

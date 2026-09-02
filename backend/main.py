@@ -20,6 +20,7 @@ from routers import resumes, jobs, photos
 from routers.ai import router as ai_router
 from routers.company_research import router as company_research_router
 from routers.cover_letters import router as cover_letters_router
+from routers.cv_critique import router as cv_critique_router
 
 
 @asynccontextmanager
@@ -60,6 +61,7 @@ app.include_router(photos.router)
 app.include_router(ai_router)
 app.include_router(cover_letters_router)
 app.include_router(company_research_router)
+app.include_router(cv_critique_router)
 
 
 @app.get("/")
