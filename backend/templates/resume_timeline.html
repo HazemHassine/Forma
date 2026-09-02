@@ -23,8 +23,16 @@
     .identity { flex: 1 1 270pt; min-width: 0; }
     .name { margin: 0; font-size: 24pt; line-height: 1.05; }
     .title { margin: 4pt 0 0; font-size: 10pt; }
-    .contact { flex: 1 1 190pt; min-width: 0; font-size: 8pt; line-height: 1.5; text-align: right; }
-    .contact div { overflow-wrap: anywhere; }
+    .contact { flex: 1 1 230pt; min-width: 0; font-size: 8pt; line-height: 1.5; text-align: right; }
+    .contact div { overflow-wrap: break-word; word-break: normal; hyphens: none; }
+    .contact a {
+      display: inline-block;
+      max-width: 100%;
+      hyphens: none;
+      -webkit-hyphens: none;
+      overflow-wrap: break-word;
+      word-break: normal;
+    }
     .section-title {
       margin: 12pt 0 6pt;
       color: #315b7d;
@@ -72,19 +80,36 @@
 <body>
   <header class="header">
     <div class="header-main">
-      <div class="identity"><h1 class="name">{{ resume.personal_info.name }}</h1><p class="title">{{ resume.personal_info.title }}</p></div>
+      <div class="identity"><h1 class="name">{{ resume.personal_info.name }}</h1>{% if resume.personal_info.title %}<p class="title">{{ resume.personal_info.title }}</p>{% endif %}</div>
       <div class="contact">
         {% if resume.personal_info.address %}<div>{{ resume.personal_info.address }}</div>{% endif %}
         {% if resume.personal_info.phone %}<div>{{ resume.personal_info.phone }}</div>{% endif %}
         {% if resume.personal_info.email %}<div><a href="mailto:{{ resume.personal_info.email }}">{{ resume.personal_info.email }}</a></div>{% endif %}
-        {% if resume.personal_info.github %}<div><a href="https://{{ resume.personal_info.github }}">{{ resume.personal_info.github }}</a></div>{% endif %}
-        {% if resume.personal_info.linkedin %}<div><a href="https://{{ resume.personal_info.linkedin }}">{{ resume.personal_info.linkedin }}</a></div>{% endif %}
+        {% if resume.personal_info.website %}<div><a href="{% if '://' in resume.personal_info.website %}{{ resume.personal_info.website }}{% else %}https://{{ resume.personal_info.website }}{% endif %}">{{ resume.personal_info.website }}</a></div>{% endif %}
+        {% if resume.personal_info.github %}<div><a href="{% if '://' in resume.personal_info.github %}{{ resume.personal_info.github }}{% else %}https://{{ resume.personal_info.github }}{% endif %}">{{ resume.personal_info.github }}</a></div>{% endif %}
+        {% if resume.personal_info.linkedin %}<div><a href="{% if '://' in resume.personal_info.linkedin %}{{ resume.personal_info.linkedin }}{% else %}https://{{ resume.personal_info.linkedin }}{% endif %}">{{ resume.personal_info.linkedin }}</a></div>{% endif %}
+        {% if resume.personal_info.custom_fields %}
+          {% for field in resume.personal_info.custom_fields %}
+            {% if field.value %}
+              <div>
+                {% if field.url %}
+                  <a href="{% if '://' in field.url %}{{ field.url }}{% else %}https://{{ field.url }}{% endif %}">{% if field.label %}{{ field.label }}: {% endif %}{{ field.value }}</a>
+                {% else %}
+                  {% if field.label %}<strong>{{ field.label }}:</strong> {% endif %}{{ field.value }}
+                {% endif %}
+              </div>
+            {% endif %}
+          {% endfor %}
+        {% endif %}
       </div>
     </div>
   </header>
 
+  {% macro render_about_me() %}
   {% if resume.about_me %}<section><h2 class="section-title">Profile</h2><p class="summary">{{ resume.about_me }}</p></section>{% endif %}
+  {% endmacro %}
 
+  {% macro render_work_experience() %}
   {% if resume.work_experience %}
   <section><h2 class="section-title">Experience Timeline</h2>
     {% for job in resume.work_experience %}<article class="timeline-item"><div class="timeline-date">{{ job.dates }}</div><div class="timeline-content">
@@ -93,7 +118,9 @@
     </div></article>{% endfor %}
   </section>
   {% endif %}
+  {% endmacro %}
 
+  {% macro render_education() %}
   {% if resume.education %}
   <section><h2 class="section-title">Education Timeline</h2>
     {% for edu in resume.education %}<article class="timeline-item"><div class="timeline-date">{{ edu.dates }}</div><div class="timeline-content">
@@ -101,7 +128,9 @@
     </div></article>{% endfor %}
   </section>
   {% endif %}
+  {% endmacro %}
 
+  {% macro render_projects() %}
   {% if resume.projects %}
   <section><h2 class="section-title">Projects</h2>
     {% for project in resume.projects %}<article class="timeline-item"><div class="timeline-date">{{ project.type }}</div><div class="timeline-content">
@@ -110,7 +139,9 @@
     </div></article>{% endfor %}
   </section>
   {% endif %}
+  {% endmacro %}
 
+  {% macro render_research() %}
   {% if resume.research %}
   <section><h2 class="section-title">Research</h2>
     {% for item in resume.research %}<article class="timeline-item"><div class="timeline-date">{{ item.date }}</div><div class="timeline-content">
@@ -118,13 +149,35 @@
     </div></article>{% endfor %}
   </section>
   {% endif %}
+  {% endmacro %}
 
+  {% macro render_skills() %}
   {% if resume.skills %}<section><h2 class="section-title">Skills</h2><div class="skills-grid">{% for skill in resume.skills %}<div class="skill-card"><strong>{{ skill.category }}</strong>{{ skill["items"] | join(", ") }}</div>{% endfor %}</div></section>{% endif %}
+  {% endmacro %}
 
-  <div class="meta-grid">
-    {% if resume.languages %}<section class="meta-column"><h2 class="section-title">Languages</h2>{% for lang in resume.languages %}<p class="compact"><strong>{{ lang.language }}</strong> — {{ lang.level }}</p>{% endfor %}</section>{% endif %}
-    {% if resume.certificates %}<section class="meta-column"><h2 class="section-title">Certificates</h2>{% for cert in resume.certificates %}<p class="compact"><strong>{{ cert.name }}</strong>{% if cert.issuer %}<br>{{ cert.issuer }}{% endif %}</p>{% endfor %}</section>{% endif %}
-  </div>
+  {% macro render_languages() %}
+  {% if resume.languages %}<section class="meta-column"><h2 class="section-title">Languages</h2>{% for lang in resume.languages %}<p class="compact"><strong>{{ lang.language }}</strong> — {{ lang.level }}</p>{% endfor %}</section>{% endif %}
+  {% endmacro %}
+
+  {% macro render_certificates() %}
+  {% if resume.certificates %}<section class="meta-column"><h2 class="section-title">Certificates</h2>{% for cert in resume.certificates %}<p class="compact"><strong>{{ cert.name }}</strong>{% if cert.issuer %}<br>{{ cert.issuer }}{% endif %}</p>{% endfor %}</section>{% endif %}
+  {% endmacro %}
+
+  {% macro render_references() %}
   {% if resume.references %}<section><h2 class="section-title">References</h2><p>{{ resume.references }}</p></section>{% endif %}
+  {% endmacro %}
+
+  {% for s in section_order %}
+    {% if s == 'about_me' %}{{ render_about_me() }}
+    {% elif s == 'work_experience' %}{{ render_work_experience() }}
+    {% elif s == 'education' %}{{ render_education() }}
+    {% elif s == 'projects' %}{{ render_projects() }}
+    {% elif s == 'research' %}{{ render_research() }}
+    {% elif s == 'skills' %}{{ render_skills() }}
+    {% elif s == 'languages' %}{{ render_languages() }}
+    {% elif s == 'certificates' %}{{ render_certificates() }}
+    {% elif s == 'references' %}{{ render_references() }}
+    {% endif %}
+  {% endfor %}
 </body>
 </html>

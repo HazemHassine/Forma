@@ -21,15 +21,25 @@ class ResumeTemplate(str, Enum):
     timeline = "timeline"
 
 
+class CustomContactField(BaseModel):
+    label: str = ""
+    value: str = ""
+    url: Optional[str] = None
+
+
 class PersonalInfo(BaseModel):
-    name: str
-    title: str
-    address: str
-    phone: str
-    email: str
-    github: str
-    linkedin: str
+    name: str = ""
+    title: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    github: Optional[str] = None
+    linkedin: Optional[str] = None
     photo_path: Optional[str] = None
+    custom_fields: Optional[list[CustomContactField]] = Field(default_factory=list)
+
+    model_config = {"extra": "allow"}
 
 
 class EducationEntry(BaseModel):
@@ -92,6 +102,7 @@ class ResumeData(BaseModel):
     certificates: list[CertificateEntry]
     languages: list[LanguageEntry]
     references: str = "Available upon request"
+    section_order: Optional[list[str]] = None
 
 
 class ResumeVersionCreate(BaseModel):

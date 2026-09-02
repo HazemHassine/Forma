@@ -164,6 +164,102 @@ class ResumeTemplateTests(unittest.IsolatedAsyncioTestCase):
                         self.assertGreaterEqual(box.position_y, top - 0.75)
                         self.assertLessEqual(box.position_y + box.height, bottom + 0.75)
 
+    def test_section_reordering_and_removal_in_pdf(self):
+        resume = {
+            "personal_info": {
+                "name": "Alex Tester",
+                "title": "Engineer",
+                "address": "Berlin, Germany",
+                "phone": "+49 000 0000",
+                "email": "alex@example.com",
+                "github": "github.com/alex",
+                "linkedin": "linkedin.com/in/alex",
+            },
+            "about_me": "SECTION_ABOUT_MARKER",
+            "education": [
+                {
+                    "institution": "SECTION_EDUCATION_MARKER",
+                    "location": "Berlin",
+                    "degree": "B.Sc.",
+                    "dates": "2020-2024",
+                }
+            ],
+            "work_experience": [
+                {
+                    "company": "SECTION_EXPERIENCE_MARKER",
+                    "location": "Berlin",
+                    "role": "Developer",
+                    "dates": "2024-Present",
+                    "bullets": ["Did work"],
+                }
+            ],
+            "projects": [
+                {
+                    "name": "SECTION_PROJECTS_MARKER",
+                    "type": "Project",
+                    "description": "App",
+                    "stack": "Python",
+                    "bullets": ["Feature"],
+                }
+            ],
+            "research": [],
+            "skills": [{"category": "Languages", "items": ["Python"]}],
+            "certificates": [],
+            "languages": [],
+            "references": "",
+        }
+
+        for template_id in ["latex", "ats", "timeline", "modern"]:
+            with self.subTest(template_id=template_id):
+                # 1. Custom order: work_experience before education
+                resume_reordered = dict(resume, section_order=["work_experience", "education", "about_me"])
+                doc = render_resume_document(resume_reordered, template_id=template_id)
+                text = "".join(b.text for p in doc.pages for b in p._page_box.descendants() if getattr(b, "text", None))
+                exp_pos = text.find("SECTION_EXPERIENCE_MARKER")
+                edu_pos = text.find("SECTION_EDUCATION_MARKER")
+                self.assertNotEqual(exp_pos, -1)
+                self.assertNotEqual(edu_pos, -1)
+                self.assertLess(exp_pos, edu_pos, f"Work experience should precede education in {template_id}")
+
+                # 2. Section removal: education removed from section_order
+                resume_removed = dict(resume, section_order=["work_experience", "about_me"])
+                doc_removed = render_resume_document(resume_removed, template_id=template_id)
+                text_removed = "".join(b.text for p in doc_removed.pages for b in p._page_box.descendants() if getattr(b, "text", None))
+                self.assertNotIn("SECTION_EDUCATION_MARKER", text_removed)
+                self.assertIn("SECTION_EXPERIENCE_MARKER", text_removed)
+
+    def test_personal_info_website_and_custom_fields_in_pdf(self):
+        resume = {
+            "personal_info": {
+                "name": "Jane Developer",
+                "title": "Senior Engineer",
+                "email": "jane@example.com",
+                "website": "janedev.com",
+                # address, phone, github, linkedin omitted/deleted
+                "custom_fields": [
+                    {"label": "Portfolio", "value": "portfolio.janedev.com", "url": "https://portfolio.janedev.com"}
+                ],
+            },
+            "about_me": "Bio text",
+            "education": [],
+            "work_experience": [],
+            "projects": [],
+            "research": [],
+            "skills": [],
+            "certificates": [],
+            "languages": [],
+            "references": "",
+        }
+
+        for template_id in ["latex", "ats", "timeline", "modern"]:
+            with self.subTest(template_id=template_id):
+                doc = render_resume_document(resume, template_id=template_id)
+                text = "".join(b.text for p in doc.pages for b in p._page_box.descendants() if getattr(b, "text", None))
+                self.assertIn("Jane Developer", text)
+                self.assertIn("janedev.com", text)
+                self.assertIn("portfolio.janedev.com", text)
+
 
 if __name__ == "__main__":
     unittest.main()
+
