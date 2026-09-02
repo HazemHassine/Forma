@@ -33,7 +33,7 @@ class DatabaseBootstrapTests(unittest.TestCase):
                 )
             }
             row = conn.execute(
-                "SELECT name, description, data FROM resume_versions"
+                "SELECT name, description, data, template_id FROM resume_versions"
             ).fetchone()
             count = conn.execute(
                 "SELECT COUNT(*) FROM resume_versions"
@@ -42,13 +42,16 @@ class DatabaseBootstrapTests(unittest.TestCase):
 
         self.assertTrue(database.SCHEMA_PATH.is_file())
         self.assertTrue(database.GENERATION_CONTEXT_MIGRATION_PATH.is_file())
+        self.assertTrue(database.RESUME_TEMPLATE_MIGRATION_PATH.is_file())
         self.assertIn("job_applications", tables)
         self.assertIn("cover_letters", tables)
         self.assertIn("company_research_reports", tables)
+        self.assertIn("profile_assets", tables)
         self.assertNotIn("job_captures", tables)
         self.assertEqual(count, 1)
         self.assertEqual(row[0], "Starter Resume")
         self.assertIn("Privacy-safe example", row[1])
+        self.assertEqual(row[3], "modern")
 
         resume = ResumeData.model_validate(json.loads(row[2]))
         self.assertEqual(resume.personal_info.name, "Your Name")

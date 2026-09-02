@@ -94,7 +94,7 @@ No markdown, code fences, commentary, or additional keys.
 """
 
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
 OPENAI_RESUME_MODEL = os.getenv("OPENAI_RESUME_MODEL", "gpt-5.6-sol")
 
 
@@ -109,7 +109,7 @@ def _get_model(*, provider: str, max_tokens: int):
         return ChatGoogleGenerativeAI(
             model=GEMINI_MODEL,
             google_api_key=api_key,
-            temperature=0.7,
+            thinking_level="medium",
             max_tokens=max_tokens,
             retries=3,
             request_timeout=180,

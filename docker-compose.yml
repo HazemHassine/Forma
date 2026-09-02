@@ -2,7 +2,7 @@ services:
   backend:
     build: ./backend
     ports:
-      - "8000:8000"
+      - "${BACKEND_PORT:-8001}:8000"
     environment:
       CV_PERSONALIZER_DATA_DIR: /app/data
     volumes:
@@ -12,14 +12,23 @@ services:
       - path: ./backend/.env
         required: false
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 10s
+      timeout: 6s
+      retries: 6
+      start_period: 20s
 
   frontend:
     build: ./frontend
     ports:
-      - "5173:5173"
+      - "${FRONTEND_PORT:-5173}:5173"
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
     volumes:
       - ./frontend/src:/app/src
       - ./frontend/index.html:/app/index.html
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped

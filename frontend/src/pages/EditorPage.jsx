@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, Download, FilePenLine } from 'lucide-react';
+import { Save, Download, FilePenLine, Palette, Check } from 'lucide-react';
 import { resumeApi } from '../api';
 import { useToast } from '../App';
 import ResumeEditor from '../components/ResumeEditor';
@@ -15,11 +15,20 @@ const EMPTY_RESUME = {
   work_experience: [],
   projects: [],
   research: [],
-  skills: {},
+  skills: [],
   certificates: [],
   languages: [],
   references: '',
 };
+
+const FALLBACK_TEMPLATES = [
+  { id: 'modern', name: 'Modern', description: 'Balanced two-column layout', accent: '#1f4e79' },
+  { id: 'classic', name: 'Classic', description: 'Traditional serif styling', accent: '#5b4636' },
+  { id: 'minimal', name: 'Minimal', description: 'Clean and understated', accent: '#222222' },
+  { id: 'executive', name: 'Executive', description: 'Confident navy and gold', accent: '#13233f' },
+  { id: 'creative', name: 'Creative', description: 'Warm editorial character', accent: '#bb4d3e' },
+  { id: 'technical', name: 'Technical', description: 'Compact and precise', accent: '#146b52' },
+];
 
 export default function EditorPage() {
   const { id } = useParams();
@@ -30,6 +39,9 @@ export default function EditorPage() {
   const [currentId, setCurrentId] = useState(id || null);
   const [resumeData, setResumeData] = useState(id ? null : EMPTY_RESUME);
   const [resumeName, setResumeName] = useState(id ? '' : 'New Resume');
+  const [templateId, setTemplateId] = useState('modern');
+  const [templates, setTemplates] = useState(FALLBACK_TEMPLATES);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [loading, setLoading] = useState(Boolean(id));
   const [saveState, setSaveState] = useState('idle'); // idle | saving | saved
   const saveTimerRef = useRef(null);
@@ -39,6 +51,10 @@ export default function EditorPage() {
 
   // Load versions list
   useEffect(() => {
+    resumeApi.templates().then(setTemplates).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     resumeApi.list().then(data => {
       setVersions(data);
       if (!id && data.length > 0) {
@@ -46,8 +62,11 @@ export default function EditorPage() {
         setLoading(true);
         setCurrentId(current.id);
       }
-    }).catch(() => {});
-  }, [id]);
+    }).catch(err => {
+      addToast(err.message || 'Failed to load resume versions', 'error');
+      setLoading(false);
+    });
+  }, [id, addToast]);
 
   // Load selected resume
   useEffect(() => {
@@ -56,6 +75,7 @@ export default function EditorPage() {
     resumeApi.get(currentId).then(data => {
       setResumeData(data.data || EMPTY_RESUME);
       setResumeName(data.name || 'Untitled');
+      setTemplateId(data.template_id || 'modern');
       setLoading(false);
     }).catch(err => {
       addToast(err.message || 'Failed to load resume', 'error');
@@ -77,11 +97,12 @@ export default function EditorPage() {
         await resumeApi.update(currentId, { data: newData });
         setSaveState('saved');
         setTimeout(() => setSaveState(prev => prev === 'saved' ? 'idle' : prev), 2000);
-      } catch {
+      } catch (err) {
         setSaveState('idle');
+        addToast(err.message || 'Autosave failed. Your changes are still in this browser.', 'error');
       }
     }, 1500);
-  }, [currentId]);
+  }, [currentId, addToast]);
 
   const handleSave = async () => {
     if (!currentId || !resumeData) return;
@@ -108,6 +129,27 @@ export default function EditorPage() {
   const handleDownload = () => {
     if (currentId) {
       window.open(resumeApi.getDownloadUrl(currentId), '_blank');
+    }
+  };
+
+  const handleTemplateChange = async (nextTemplateId) => {
+    if (!currentId || nextTemplateId === templateId) {
+      setTemplateOpen(false);
+      return;
+    }
+    const previousTemplateId = templateId;
+    setTemplateId(nextTemplateId);
+    setTemplateOpen(false);
+    setSaveState('saving');
+    try {
+      await resumeApi.update(currentId, { template_id: nextTemplateId });
+      setSaveState('saved');
+      addToast(`Template changed to ${templates.find(item => item.id === nextTemplateId)?.name || nextTemplateId}`, 'success');
+      setTimeout(() => setSaveState(prev => prev === 'saved' ? 'idle' : prev), 2000);
+    } catch (err) {
+      setTemplateId(previousTemplateId);
+      setSaveState('idle');
+      addToast(err.message || 'Failed to change template', 'error');
     }
   };
 
@@ -170,6 +212,35 @@ export default function EditorPage() {
           </div>
         </div>
         <div className="editor-topbar-right">
+          <div className="template-picker">
+            <Button variant="secondary" size="sm" onClick={() => setTemplateOpen(open => !open)} disabled={!currentId}>
+              <Palette size={14} /> {templates.find(item => item.id === templateId)?.name || 'Template'}
+            </Button>
+            {templateOpen && (
+              <div className="template-menu">
+                <div className="template-menu-heading">
+                  <strong>Choose a template</strong>
+                  <span>Your content stays exactly the same.</span>
+                </div>
+                <div className="template-menu-grid">
+                  {templates.map(template => (
+                    <button
+                      type="button"
+                      key={template.id}
+                      className={`template-option ${template.id === templateId ? 'selected' : ''}`}
+                      onClick={() => handleTemplateChange(template.id)}
+                    >
+                      <span className="template-swatch" style={{ '--template-accent': template.accent }}>
+                        <i></i><i></i><i></i>
+                      </span>
+                      <span><strong>{template.name}</strong><small>{template.description}</small></span>
+                      {template.id === templateId && <Check size={14} />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <Button variant="secondary" size="sm" onClick={handleSave} disabled={!currentId}>
             <Save size={14} /> Save
           </Button>
@@ -185,7 +256,7 @@ export default function EditorPage() {
         </div>
         <div className="editor-divider" ref={dividerRef} onMouseDown={handleDividerMouseDown}></div>
         <div className="editor-pane editor-pane-right" style={{ width: `${100 - leftWidth}%` }}>
-          <ResumePreview resumeId={currentId} />
+          <ResumePreview key={`${currentId}-${templateId}`} resumeId={currentId} renderingKey={templateId} />
         </div>
       </div>
     </div>

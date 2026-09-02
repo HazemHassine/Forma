@@ -116,6 +116,9 @@
   padding: 14px;
   border-top: 1px solid rgba(255,255,255,.07);
 }
+.system-status { display: flex; align-items: center; gap: 7px; padding: 7px 8px; margin-bottom: 8px; color: #25845f; font-size: 10.5px; }
+.system-status.error { color: var(--danger); }
+.provider-warning { color: var(--warning); font-size: 10px; line-height: 1.35; }
 .provider-selector {
   display: flex;
   flex-direction: column;

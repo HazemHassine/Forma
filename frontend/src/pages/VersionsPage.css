@@ -134,6 +134,7 @@
 }
 .version-card-badges { display: flex; align-items: center; gap: 6px; }
 .version-card-badge.draft { background: rgba(245, 158, 11, .12); color: #b45309; }
+.version-card-badge.template { background: var(--bg-elevated); color: var(--text-secondary); border-color: var(--border-default); text-transform: capitalize; }
 .form-hint { color: var(--text-muted); font-size: var(--font-tiny); margin-top: 6px; }
 
 @media (max-width: 700px) {

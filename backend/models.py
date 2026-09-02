@@ -9,6 +9,15 @@ class AIProvider(str, Enum):
     chatgpt = "chatgpt"
 
 
+class ResumeTemplate(str, Enum):
+    modern = "modern"
+    classic = "classic"
+    minimal = "minimal"
+    executive = "executive"
+    creative = "creative"
+    technical = "technical"
+
+
 class PersonalInfo(BaseModel):
     name: str
     title: str
@@ -17,6 +26,7 @@ class PersonalInfo(BaseModel):
     email: str
     github: str
     linkedin: str
+    photo_path: Optional[str] = None
 
 
 class EducationEntry(BaseModel):
@@ -85,12 +95,14 @@ class ResumeVersionCreate(BaseModel):
     name: str
     description: Optional[str] = None
     data: ResumeData
+    template_id: ResumeTemplate = ResumeTemplate.modern
 
 
 class ResumeVersionUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     data: Optional[ResumeData] = None
+    template_id: Optional[ResumeTemplate] = None
 
 
 class ResumeVersion(BaseModel):
@@ -100,6 +112,7 @@ class ResumeVersion(BaseModel):
     data: Optional[ResumeData] = None
     created_at: str
     is_current: bool
+    template_id: ResumeTemplate = ResumeTemplate.modern
 
 
 class ResumeVersionSummary(BaseModel):
@@ -108,6 +121,14 @@ class ResumeVersionSummary(BaseModel):
     description: Optional[str] = None
     created_at: str
     is_current: bool
+    template_id: ResumeTemplate = ResumeTemplate.modern
+
+
+class ResumeTemplateOption(BaseModel):
+    id: ResumeTemplate
+    name: str
+    description: str
+    accent: str
 
 
 class JobApplicationCreate(BaseModel):

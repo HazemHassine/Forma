@@ -9,7 +9,13 @@ backend_env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".en
 load_dotenv(dotenv_path=backend_env_path, override=False)
 
 from config import STATIC_DIR, ensure_data_layout
-from database import init_db, migrate_legacy_database, seed_initial_resume
+from database import (
+    database_backend,
+    get_db,
+    init_db,
+    migrate_legacy_database,
+    seed_initial_resume,
+)
 from routers import resumes, jobs, photos
 from routers.ai import router as ai_router
 from routers.company_research import router as company_research_router
@@ -67,4 +73,32 @@ async def root():
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    conn = get_db()
+    try:
+        conn.execute("SELECT 1 AS ok").fetchone()
+    finally:
+        conn.close()
+    return {"status": "healthy", "database": database_backend()}
+
+
+@app.get("/api/system/status")
+async def system_status():
+    conn = get_db()
+    try:
+        conn.execute("SELECT 1 AS ok").fetchone()
+    finally:
+        conn.close()
+    return {
+        "status": "ready",
+        "database": database_backend(),
+        "ai": {
+            "gemini": {
+                "configured": bool(os.getenv("GEMINI_API_KEY")),
+                "model": os.getenv("GEMINI_MODEL", "gemini-3.7-flash"),
+            },
+            "chatgpt": {
+                "configured": bool(os.getenv("OPENAI_API_KEY")),
+                "model": os.getenv("OPENAI_RESUME_MODEL", "gpt-5.6-sol"),
+            },
+        },
+    }

@@ -19,7 +19,7 @@ test('AI suggestions use the selected provider route', async () => {
       section_type: 'about_me',
       current_content: 'Original',
     });
-    assert.equal(requestedUrl, 'http://localhost:8000/api/ai/chatgpt/suggest');
+    assert.equal(requestedUrl, '/api/ai/chatgpt/suggest');
     assert.equal(result.suggestion, 'Improved');
   } finally {
     globalThis.fetch = originalFetch;
@@ -54,10 +54,10 @@ test('Gemini is used by every cover-letter and research mutation route', async (
   }
 
   assert.deepEqual(requestedUrls, [
-    'http://localhost:8000/api/cover-letters/gemini/analyze',
-    'http://localhost:8000/api/cover-letters/gemini/research',
-    'http://localhost:8000/api/cover-letters/gemini/generate',
-    'http://localhost:8000/api/company-research/gemini/research',
+    '/api/cover-letters/gemini/analyze',
+    '/api/cover-letters/gemini/research',
+    '/api/cover-letters/gemini/generate',
+    '/api/company-research/gemini/research',
   ]);
   assert.equal(requestedUrls.some(url => url.includes('chatgpt')), false);
 });

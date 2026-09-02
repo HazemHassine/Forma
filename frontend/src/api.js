@@ -1,4 +1,6 @@
-const API_BASE = 'http://localhost:8000/api';
+// Relative requests work in Docker, local Vite development, and deployments
+// behind a reverse proxy. Set VITE_API_BASE only for a deliberately separate API.
+const API_BASE = (import.meta.env?.VITE_API_BASE || '/api').replace(/\/$/, '');
 const AI_PROVIDERS = new Set(['gemini', 'chatgpt']);
 
 function aiProviderPath(provider) {
@@ -68,7 +70,15 @@ async function request(endpoint, options = {}) {
     delete config.headers['Content-Type'];
   }
 
-  const response = await fetch(url, config);
+  let response;
+  try {
+    response = await fetch(url, config);
+  } catch (error) {
+    throw new Error(
+      `Cannot reach the Forma backend. Check that it is running and healthy. (${error.message})`,
+      { cause: error },
+    );
+  }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
@@ -86,6 +96,7 @@ async function request(endpoint, options = {}) {
 
 // Resume endpoints
 export const resumeApi = {
+  templates: () => request('/resumes/templates'),
   list: () => request('/resumes'),
   get: (id) => request(`/resumes/${id}`),
   create: (data) => request('/resumes', { method: 'POST', body: data }),
@@ -148,5 +159,9 @@ export const photoApi = {
     formData.append('file', file);
     return request('/photos/upload', { method: 'POST', body: formData });
   },
-  getCurrentUrl: () => `${API_BASE}/photos/current`,
+  getUrl: (path) => path || '',
+};
+
+export const systemApi = {
+  status: () => request('/system/status'),
 };

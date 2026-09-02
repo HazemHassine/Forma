@@ -132,7 +132,7 @@ export default function ResumeEditor({ data, onChange }) {
             <label className="field-label">Photo</label>
             <div className="photo-upload-area">
               {pi.photo_path ? (
-                <img className="photo-preview" src={photoApi.getCurrentUrl()} alt="Profile" />
+                <img className="photo-preview" src={photoApi.getUrl(pi.photo_path)} alt="Profile" />
               ) : (
                 <div className="photo-placeholder"><User size={24} /></div>
               )}

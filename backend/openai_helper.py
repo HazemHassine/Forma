@@ -27,7 +27,7 @@ OPENAI_COMPANY_RESEARCH_MODEL = (
 )
 GEMINI_COVER_LETTER_MODEL = os.getenv(
     "GEMINI_COVER_LETTER_MODEL",
-    os.getenv("GEMINI_MODEL", "gemini-3.5-flash"),
+    os.getenv("GEMINI_MODEL", "gemini-3.7-flash"),
 )
 GEMINI_COMPANY_RESEARCH_MODEL = os.getenv(
     "GEMINI_COMPANY_RESEARCH_MODEL",
@@ -853,7 +853,7 @@ def _get_gemini_model(model: str | None = None) -> ChatGoogleGenerativeAI:
     return ChatGoogleGenerativeAI(
         model=model or GEMINI_COVER_LETTER_MODEL,
         google_api_key=api_key,
-        temperature=0.4,
+        thinking_level="medium",
         max_tokens=12000,
         retries=OPENAI_MAX_ATTEMPTS,
         request_timeout=OPENAI_REQUEST_TIMEOUT,
@@ -884,10 +884,9 @@ def _invoke_structured_model(state: StructuredGraphState) -> StructuredGraphStat
         model = _get_gemini_model(state.get("model"))
         raw_search = None
         if state.get("tools"):
-            raw_search = model.invoke(
-                messages,
-                tools=[{"google_search": {}}],
-            )
+            raw_search = model.bind_tools(
+                [{"google_search": {}}]
+            ).invoke(messages)
             consulted_sources = _consulted_web_sources(raw_search)
             messages.append(
                 HumanMessage(
@@ -1047,6 +1046,19 @@ def _consulted_web_sources(payload: dict | AIMessage) -> list[dict]:
         if sources_by_url:
             return list(sources_by_url.values())
         blocks = payload.content_blocks
+        for block in blocks:
+            for annotation in block.get("annotations") or []:
+                citation = annotation.get("url_citation") or annotation
+                url = citation.get("url")
+                canonical = _canonical_url(url or "")
+                if not canonical or canonical in sources_by_url:
+                    continue
+                sources_by_url[canonical] = {
+                    "title": str(citation.get("title") or url).strip(),
+                    "url": url.strip(),
+                }
+        if sources_by_url:
+            return list(sources_by_url.values())
         payload = {"output": blocks}
 
     sources_by_url = {}

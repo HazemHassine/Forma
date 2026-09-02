@@ -62,7 +62,7 @@ def list_company_research_reports(
     parameters = []
     company_filter = _optional_text(company)
     if company_filter:
-        clauses.append("company LIKE ? COLLATE NOCASE")
+        clauses.append("LOWER(company) LIKE LOWER(?)")
         parameters.append(f"%{company_filter}%")
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     parameters.extend([limit, offset])

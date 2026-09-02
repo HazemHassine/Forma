@@ -172,6 +172,7 @@ export default function VersionsPage() {
                 <div className="version-card-badges">
                   {v.name.startsWith('Draft ·') && <span className="version-card-badge draft">Draft</span>}
                   {v.is_current && <span className="version-card-badge">Current</span>}
+                  <span className="version-card-badge template">{v.template_id || 'modern'}</span>
                 </div>
               </div>
               {v.description && <div className="version-card-desc">{v.description}</div>}

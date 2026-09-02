@@ -52,6 +52,13 @@ class LangChainGeminiTests(unittest.TestCase):
 
 
 class ResumeAIProviderTests(unittest.TestCase):
+    def test_gemini_model_uses_supported_thinking_configuration(self):
+        with mock.patch.dict(ai_helper.os.environ, {"GEMINI_API_KEY": "test-key"}):
+            model = ai_helper._get_model(provider="gemini", max_tokens=500)
+
+        self.assertEqual(model.model, ai_helper.GEMINI_MODEL)
+        self.assertEqual(model.thinking_level, "medium")
+
     def test_chatgpt_model_uses_the_configured_resume_model(self):
         with mock.patch.dict(ai_helper.os.environ, {"OPENAI_API_KEY": "test-key"}):
             model = ai_helper._get_model(provider="chatgpt", max_tokens=500)
@@ -124,7 +131,9 @@ class LangChainOpenAITests(unittest.TestCase):
             "parsing_error": None,
         }
         gemini_model = mock.MagicMock()
-        gemini_model.invoke.return_value = raw
+        grounded_model = mock.MagicMock()
+        grounded_model.invoke.return_value = raw
+        gemini_model.bind_tools.return_value = grounded_model
         gemini_model.with_structured_output.return_value = structured
 
         with (
@@ -154,10 +163,11 @@ class LangChainOpenAITests(unittest.TestCase):
         self.assertIs(result["raw"], raw)
         get_gemini.assert_called_once()
         get_openai.assert_not_called()
-        gemini_model.invoke.assert_called_once()
+        gemini_model.bind_tools.assert_called_once_with([{"google_search": {}}])
+        grounded_model.invoke.assert_called_once()
         self.assertEqual(
-            gemini_model.invoke.call_args.kwargs["tools"],
-            [{"google_search": {}}],
+            grounded_model.invoke.call_args.args[0][0].type,
+            "system",
         )
 
     def test_cover_letter_analysis_forwards_gemini_provider(self):

@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS resume_versions (
     name TEXT NOT NULL,
     description TEXT,
     data TEXT NOT NULL,
+    template_id TEXT NOT NULL DEFAULT 'modern',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_current BOOLEAN DEFAULT 0
 );
@@ -51,3 +52,10 @@ ON company_research_reports (created_at DESC, id DESC);
 
 CREATE INDEX IF NOT EXISTS idx_company_research_company
 ON company_research_reports (company COLLATE NOCASE);
+
+CREATE TABLE IF NOT EXISTS profile_assets (
+    id TEXT PRIMARY KEY,
+    content_type TEXT NOT NULL,
+    data BLOB NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

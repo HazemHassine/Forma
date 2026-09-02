@@ -1,10 +1,25 @@
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { PenLine, Layers, Briefcase, Target, Mail, Command, Building2, Bot } from 'lucide-react';
+import { PenLine, Layers, Briefcase, Target, Mail, Command, Building2, Bot, Database, CircleAlert } from 'lucide-react';
 import { useAIProvider } from '../App';
+import { systemApi } from '../api';
 import './Layout.css';
 
 export default function Layout({ children }) {
   const { aiProvider, setAIProvider } = useAIProvider();
+  const [systemStatus, setSystemStatus] = useState(null);
+  const [statusError, setStatusError] = useState(false);
+
+  useEffect(() => {
+    systemApi.status()
+      .then(status => {
+        setSystemStatus(status);
+        setStatusError(false);
+      })
+      .catch(() => setStatusError(true));
+  }, []);
+
+  const selectedAI = systemStatus?.ai?.[aiProvider];
 
   return (
     <div className="layout">
@@ -47,6 +62,16 @@ export default function Layout({ children }) {
           </NavLink>
         </nav>
         <div className="sidebar-footer">
+          <div className={`system-status ${statusError ? 'error' : ''}`}>
+            {statusError ? <CircleAlert size={14} /> : <Database size={14} />}
+            <span>
+              {statusError
+                ? 'Backend unavailable'
+                : systemStatus
+                  ? `${systemStatus.database === 'supabase' ? 'Supabase' : 'Local data'} connected`
+                  : 'Checking backend…'}
+            </span>
+          </div>
           <div className="provider-selector">
             <label htmlFor="ai-provider"><Bot size={14} /> AI provider</label>
             <select
@@ -58,6 +83,9 @@ export default function Layout({ children }) {
               <option value="gemini">Gemini</option>
               <option value="chatgpt">ChatGPT</option>
             </select>
+            {selectedAI && !selectedAI.configured && (
+              <div className="provider-warning">Add its API key in backend/.env</div>
+            )}
           </div>
           <div className="sidebar-command">
             <Command size={14} />

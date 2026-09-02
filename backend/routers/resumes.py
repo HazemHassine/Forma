@@ -6,12 +6,40 @@ from models import (
     ResumeVersion,
     ResumeVersionSummary,
     ResumeDuplicateRequest,
+    ResumeTemplateOption,
 )
 from database import get_db
 from fastapi.responses import Response
 from pdf_generator import generate_pdf
+from routers.photos import get_current_photo_data
 
 router = APIRouter(prefix="/api/resumes", tags=["resumes"])
+
+RESUME_TEMPLATES = [
+    {"id": "modern", "name": "Modern", "description": "Balanced two-column layout", "accent": "#1f4e79"},
+    {"id": "classic", "name": "Classic", "description": "Traditional serif styling", "accent": "#5b4636"},
+    {"id": "minimal", "name": "Minimal", "description": "Clean and understated", "accent": "#222222"},
+    {"id": "executive", "name": "Executive", "description": "Confident navy and gold", "accent": "#13233f"},
+    {"id": "creative", "name": "Creative", "description": "Warm editorial character", "accent": "#bb4d3e"},
+    {"id": "technical", "name": "Technical", "description": "Compact and precise", "accent": "#146b52"},
+]
+
+
+def _serialize_version(row) -> ResumeVersion:
+    return ResumeVersion(
+        id=row["id"],
+        name=row["name"],
+        description=row["description"],
+        data=json.loads(row["data"]),
+        created_at=row["created_at"],
+        is_current=bool(row["is_current"]),
+        template_id=row["template_id"] or "modern",
+    )
+
+
+@router.get("/templates", response_model=list[ResumeTemplateOption])
+async def list_resume_templates():
+    return RESUME_TEMPLATES
 
 
 @router.get("", response_model=list[ResumeVersionSummary])
@@ -20,7 +48,7 @@ async def list_resume_versions():
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT id, name, description, created_at, is_current "
+        "SELECT id, name, description, created_at, is_current, template_id "
         "FROM resume_versions ORDER BY created_at DESC"
     )
     rows = cursor.fetchall()
@@ -32,6 +60,7 @@ async def list_resume_versions():
             description=row["description"],
             created_at=row["created_at"],
             is_current=bool(row["is_current"]),
+            template_id=row["template_id"] or "modern",
         )
         for row in rows
     ]
@@ -43,22 +72,15 @@ async def create_resume_version(version: ResumeVersionCreate):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT INTO resume_versions (name, description, data) VALUES (?, ?, ?)",
-        (version.name, version.description, version.data.model_dump_json()),
+        "INSERT INTO resume_versions (name, description, data, template_id) VALUES (?, ?, ?, ?)",
+        (version.name, version.description, version.data.model_dump_json(), version.template_id.value),
     )
     conn.commit()
     version_id = cursor.lastrowid
     cursor.execute("SELECT * FROM resume_versions WHERE id = ?", (version_id,))
     row = cursor.fetchone()
     conn.close()
-    return ResumeVersion(
-        id=row["id"],
-        name=row["name"],
-        description=row["description"],
-        data=json.loads(row["data"]),
-        created_at=row["created_at"],
-        is_current=bool(row["is_current"]),
-    )
+    return _serialize_version(row)
 
 
 @router.get("/{version_id}", response_model=ResumeVersion)
@@ -71,14 +93,7 @@ async def get_resume_version(version_id: int):
     conn.close()
     if not row:
         raise HTTPException(status_code=404, detail="Resume version not found")
-    return ResumeVersion(
-        id=row["id"],
-        name=row["name"],
-        description=row["description"],
-        data=json.loads(row["data"]),
-        created_at=row["created_at"],
-        is_current=bool(row["is_current"]),
-    )
+    return _serialize_version(row)
 
 
 @router.put("/{version_id}", response_model=ResumeVersion)
@@ -92,7 +107,6 @@ async def update_resume_version(version_id: int, update: ResumeVersionUpdate):
         conn.close()
         raise HTTPException(status_code=404, detail="Resume version not found")
 
-    current_data = json.loads(row["data"])
     new_name = update.name if update.name is not None else row["name"]
     new_description = (
         update.description if update.description is not None else row["description"]
@@ -100,24 +114,22 @@ async def update_resume_version(version_id: int, update: ResumeVersionUpdate):
     new_data = (
         update.data.model_dump_json() if update.data is not None else row["data"]
     )
+    new_template_id = (
+        update.template_id.value
+        if update.template_id is not None
+        else row["template_id"]
+    )
 
     cursor.execute(
-        "UPDATE resume_versions SET name = ?, description = ?, data = ? WHERE id = ?",
-        (new_name, new_description, new_data, version_id),
+        "UPDATE resume_versions SET name = ?, description = ?, data = ?, template_id = ? WHERE id = ?",
+        (new_name, new_description, new_data, new_template_id, version_id),
     )
     conn.commit()
 
     cursor.execute("SELECT * FROM resume_versions WHERE id = ?", (version_id,))
     row = cursor.fetchone()
     conn.close()
-    return ResumeVersion(
-        id=row["id"],
-        name=row["name"],
-        description=row["description"],
-        data=json.loads(row["data"]),
-        created_at=row["created_at"],
-        is_current=bool(row["is_current"]),
-    )
+    return _serialize_version(row)
 
 
 @router.delete("/{version_id}")
@@ -156,22 +168,15 @@ async def duplicate_resume_version(
 
     new_name = request.name or f"{row['name']} (Copy)"
     cursor.execute(
-        "INSERT INTO resume_versions (name, description, data) VALUES (?, ?, ?)",
-        (new_name, row["description"], row["data"]),
+        "INSERT INTO resume_versions (name, description, data, template_id) VALUES (?, ?, ?, ?)",
+        (new_name, row["description"], row["data"], row["template_id"]),
     )
     conn.commit()
     new_id = cursor.lastrowid
     cursor.execute("SELECT * FROM resume_versions WHERE id = ?", (new_id,))
     new_row = cursor.fetchone()
     conn.close()
-    return ResumeVersion(
-        id=new_row["id"],
-        name=new_row["name"],
-        description=new_row["description"],
-        data=json.loads(new_row["data"]),
-        created_at=new_row["created_at"],
-        is_current=bool(new_row["is_current"]),
-    )
+    return _serialize_version(new_row)
 
 
 @router.get("/{version_id}/pdf")
@@ -186,7 +191,13 @@ async def download_resume_pdf(version_id: int):
         raise HTTPException(status_code=404, detail="Resume version not found")
 
     resume_data = json.loads(row["data"])
-    pdf_bytes = generate_pdf(resume_data)
+    photo = get_current_photo_data()
+    pdf_bytes = generate_pdf(
+        resume_data,
+        template_id=row["template_id"],
+        photo_data=bytes(photo["data"]) if photo else None,
+        photo_content_type=photo["content_type"] if photo else None,
+    )
 
     return Response(
         content=pdf_bytes,
@@ -209,7 +220,13 @@ async def preview_resume_pdf(version_id: int):
         raise HTTPException(status_code=404, detail="Resume version not found")
 
     resume_data = json.loads(row["data"])
-    pdf_bytes = generate_pdf(resume_data)
+    photo = get_current_photo_data()
+    pdf_bytes = generate_pdf(
+        resume_data,
+        template_id=row["template_id"],
+        photo_data=bytes(photo["data"]) if photo else None,
+        photo_content_type=photo["content_type"] if photo else None,
+    )
 
     return Response(
         content=pdf_bytes,
@@ -232,10 +249,10 @@ async def set_current_version(version_id: int):
         raise HTTPException(status_code=404, detail="Resume version not found")
 
     # Unset all current flags
-    cursor.execute("UPDATE resume_versions SET is_current = 0")
+    cursor.execute("UPDATE resume_versions SET is_current = FALSE")
     # Set the selected one as current
     cursor.execute(
-        "UPDATE resume_versions SET is_current = 1 WHERE id = ?", (version_id,)
+        "UPDATE resume_versions SET is_current = TRUE WHERE id = ?", (version_id,)
     )
     conn.commit()
     conn.close()

@@ -4,7 +4,7 @@ import { resumeApi } from '../api';
 import Button from './Button';
 import './ResumePreview.css';
 
-export default function ResumePreview({ resumeId }) {
+export default function ResumePreview({ resumeId, renderingKey = '' }) {
   const [loading, setLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -54,9 +54,9 @@ export default function ResumePreview({ resumeId }) {
           </div>
         )}
         <iframe
-          key={refreshKey}
+          key={`${refreshKey}-${renderingKey}`}
           className="preview-iframe"
-          src={`${resumeApi.getPreviewUrl(resumeId)}?t=${refreshKey}`}
+          src={`${resumeApi.getPreviewUrl(resumeId)}?t=${refreshKey}-${renderingKey}`}
           onLoad={handleLoad}
           title="Resume Preview"
           style={{ opacity: loading ? 0 : 1, transition: 'opacity 0.3s' }}

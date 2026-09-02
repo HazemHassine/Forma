@@ -5,6 +5,7 @@ from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BACKEND_DIR.parent
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 
 
 def _resolve_data_dir() -> Path:
