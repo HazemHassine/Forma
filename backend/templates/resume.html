@@ -3,12 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <style>
-        @font-face {
-            font-family: 'Rubik';
-            font-style: normal;
-            font-weight: 400;
-            src: url('static/fonts/Rubik-Regular.ttf') format('truetype');
-        }
         @page {
             size: A4;
             margin: 0pt 20pt;
@@ -424,7 +418,7 @@
 
         /* Font choices are intentionally limited to print-safe, readable families. */
         body.font-clean, body.font-clean * { font-family: Arial, Helvetica, sans-serif !important; }
-        body.font-modern, body.font-modern * { font-family: 'Rubik', Arial, Helvetica, sans-serif !important; }
+        body.font-modern, body.font-modern * { font-family: 'Liberation Sans', Arial, Helvetica, sans-serif !important; }
     </style>
 </head>
 <body class="template-{{ template_id }} font-{{ resume.font_family | default('classic', true) }}">

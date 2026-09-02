@@ -48,7 +48,7 @@ const FALLBACK_TEMPLATES = [
 const FONT_OPTIONS = [
   { id: 'classic', name: 'Classic Serif', description: 'Traditional and highly readable', preview: 'Georgia, serif' },
   { id: 'clean', name: 'Clean Sans', description: 'Simple, neutral, and ATS-friendly', preview: 'Arial, sans-serif' },
-  { id: 'modern', name: 'Modern Sans', description: 'Contemporary with clear hierarchy', preview: 'Rubik, Arial, sans-serif' },
+  { id: 'modern', name: 'Professional Sans', description: 'Clear hierarchy with full style support', preview: 'Arial, sans-serif' },
 ];
 
 export default function EditorPage() {
