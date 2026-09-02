@@ -50,7 +50,9 @@
     .column { display: table-cell; width: 50%; vertical-align: top; }
     .column:first-child { padding-right: 14pt; }
     .column:last-child { padding-left: 14pt; }
-    .compact-item { margin: 0 0 2pt; }
+    .column .section-title { margin-top: 7pt; }
+    .compact-item { margin: 0 0 1pt; }
+    .references-inline { margin: 1pt 0 0; font-size: 8.2pt; }
   </style>
 </head>
 <body>
@@ -110,9 +112,8 @@
   {% endif %}
 
   <div class="two-column">
-    {% if resume.languages %}<section class="column"><h2 class="section-title">Languages</h2>{% for lang in resume.languages %}<p class="compact-item"><strong>{{ lang.language }}</strong> — {{ lang.level }}</p>{% endfor %}</section>{% endif %}
+    {% if resume.languages or resume.references %}<section class="column">{% if resume.languages %}<h2 class="section-title">Languages</h2>{% for lang in resume.languages %}<p class="compact-item"><strong>{{ lang.language }}</strong> — {{ lang.level }}</p>{% endfor %}{% endif %}{% if resume.references %}<p class="references-inline"><strong>References:</strong> {{ resume.references }}</p>{% endif %}</section>{% endif %}
     {% if resume.certificates %}<section class="column"><h2 class="section-title">Certificates</h2>{% for cert in resume.certificates %}<p class="compact-item"><strong>{{ cert.name }}</strong>{% if cert.issuer %}, {{ cert.issuer }}{% endif %}</p>{% endfor %}</section>{% endif %}
   </div>
-  {% if resume.references %}<section><h2 class="section-title">References</h2><p>{{ resume.references }}</p></section>{% endif %}
 </body>
 </html>

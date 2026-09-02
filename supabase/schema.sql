@@ -11,7 +11,10 @@ create table if not exists public.resume_versions (
     created_at timestamptz not null default now(),
     is_current boolean not null default false,
     constraint resume_versions_template_id_check check (
-        template_id in ('modern', 'classic', 'minimal', 'executive', 'creative', 'technical')
+        template_id in (
+            'modern', 'classic', 'minimal', 'executive', 'creative', 'technical',
+            'latex', 'ats', 'timeline'
+        )
     )
 );
 
@@ -64,20 +67,16 @@ alter table public.resume_versions
 alter table public.cover_letters
     add column if not exists generation_context text;
 
-do $$
-begin
-    if not exists (
-        select 1
-        from pg_constraint
-        where conname = 'resume_versions_template_id_check'
-          and conrelid = 'public.resume_versions'::regclass
-    ) then
-        alter table public.resume_versions
-            add constraint resume_versions_template_id_check check (
-                template_id in ('modern', 'classic', 'minimal', 'executive', 'creative', 'technical')
-            );
-    end if;
-end $$;
+alter table public.resume_versions
+    drop constraint if exists resume_versions_template_id_check;
+
+alter table public.resume_versions
+    add constraint resume_versions_template_id_check check (
+        template_id in (
+            'modern', 'classic', 'minimal', 'executive', 'creative', 'technical',
+            'latex', 'ats', 'timeline'
+        )
+    );
 
 create index if not exists idx_company_research_created
     on public.company_research_reports (created_at desc, id desc);
