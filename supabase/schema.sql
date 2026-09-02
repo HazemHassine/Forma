@@ -95,7 +95,7 @@ create table if not exists public.cv_critiques (
     provider text not null default 'gemini',
     overall_score integer not null,
     summary text not null,
-    critique_data jsonb not null,
+    critique_data text not null,
     created_at timestamptz not null default timezone('utc'::text, now())
 );
 
