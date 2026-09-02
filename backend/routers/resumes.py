@@ -183,7 +183,7 @@ async def duplicate_resume_version(
 
 
 @router.get("/{version_id}/pdf")
-async def download_resume_pdf(version_id: int):
+def download_resume_pdf(version_id: int):
     """Generate and download resume as PDF."""
     conn = get_db()
     cursor = conn.cursor()
@@ -212,7 +212,7 @@ async def download_resume_pdf(version_id: int):
 
 
 @router.get("/{version_id}/preview")
-async def preview_resume_pdf(version_id: int):
+def preview_resume_pdf(version_id: int):
     """Generate and return resume PDF for inline preview."""
     conn = get_db()
     cursor = conn.cursor()
