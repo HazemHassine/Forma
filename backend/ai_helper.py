@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 from typing import Any, TypedDict
@@ -84,7 +85,12 @@ NON-NEGOTIABLE RULES:
 
 Return ONLY valid JSON with this exact top-level structure:
 {{
-  "resume": <the complete resume object with the exact input schema>,
+  "resume": {{
+    "about_me": <tailored 2-3 sentence profile>,
+    "work_experience": [{{"bullets": [<concise tailored bullet points matching original count>]}}],
+    "projects": [{{"description": <tailored impact description>, "bullets": [<tailored bullets matching original count>]}}],
+    "research": [{{"description": <tailored research description>}}]
+  }},
   "match_summary": <one short sentence explaining the tailoring strategy>,
   "strengths": [<up to 4 evidence-backed matches>],
   "gaps": [<up to 4 important requirements not evidenced in the resume>],
@@ -263,7 +269,54 @@ def optimize_resume(
     output_schema = {
         "type": "object",
         "properties": {
-            "resume": {"type": "object"},
+            "resume": {
+                "type": "object",
+                "properties": {
+                    "about_me": {"type": "string"},
+                    "work_experience": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "company": {"type": "string"},
+                                "role": {"type": "string"},
+                                "bullets": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                            },
+                            "required": ["bullets"],
+                        },
+                    },
+                    "projects": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "description": {"type": "string"},
+                                "bullets": {
+                                    "type": "array",
+                                    "items": {"type": "string"},
+                                },
+                            },
+                            "required": ["description", "bullets"],
+                        },
+                    },
+                    "research": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {"type": "string"},
+                                "description": {"type": "string"},
+                            },
+                            "required": ["description"],
+                        },
+                    },
+                },
+                "required": ["about_me"],
+            },
             "match_summary": {"type": "string"},
             "strengths": {"type": "array", "items": {"type": "string"}},
             "gaps": {"type": "array", "items": {"type": "string"}},
@@ -293,39 +346,48 @@ def optimize_resume(
     if not isinstance(optimized, dict) or not isinstance(optimized.get("resume"), dict):
         raise ValueError("AI response did not contain the required resume object. Please try again.")
 
-    # Guard immutable identity fields even if the model ignores an instruction.
-    protected_sections = [
-        "personal_info", "education", "skills", "certificates", "languages", "references"
-    ]
-    for section in protected_sections:
-        optimized["resume"][section] = resume_data[section]
+    # Start with a deep copy of the source resume data so all fields, structure,
+    # and unedited sections remain completely intact and valid.
+    final_resume = copy.deepcopy(resume_data)
+    model_resume = optimized.get("resume") or {}
 
-    for index, original in enumerate(resume_data.get("work_experience", [])):
-        if index >= len(optimized["resume"].get("work_experience", [])):
-            optimized["resume"]["work_experience"] = resume_data["work_experience"]
-            break
-        candidate = optimized["resume"]["work_experience"][index]
-        for field in ("company", "location", "role", "dates"):
-            candidate[field] = original[field]
-        if len(candidate.get("bullets", [])) != len(original.get("bullets", [])):
-            candidate["bullets"] = original["bullets"]
+    # 1. Tailor about_me if provided by the model
+    if model_resume.get("about_me"):
+        final_resume["about_me"] = str(model_resume["about_me"]).strip()
 
-    for index, original in enumerate(resume_data.get("projects", [])):
-        if index >= len(optimized["resume"].get("projects", [])):
-            optimized["resume"]["projects"] = resume_data["projects"]
-            break
-        candidate = optimized["resume"]["projects"][index]
-        for field in ("name", "type", "stack", "extra_info"):
-            candidate[field] = original.get(field)
-        if len(candidate.get("bullets", [])) != len(original.get("bullets", [])):
-            candidate["bullets"] = original["bullets"]
+    # 2. Update work_experience bullets while strictly preserving company, location, role, dates
+    original_work = resume_data.get("work_experience", [])
+    model_work = model_resume.get("work_experience", [])
+    if isinstance(model_work, list):
+        for index, original in enumerate(original_work):
+            if index < len(model_work) and isinstance(model_work[index], dict):
+                candidate = model_work[index]
+                bullets = candidate.get("bullets")
+                if isinstance(bullets, list) and len(bullets) == len(original.get("bullets", [])):
+                    final_resume["work_experience"][index]["bullets"] = [str(b).strip() for b in bullets]
 
-    for index, original in enumerate(resume_data.get("research", [])):
-        if index >= len(optimized["resume"].get("research", [])):
-            optimized["resume"]["research"] = resume_data["research"]
-            break
-        candidate = optimized["resume"]["research"][index]
-        for field in ("title", "institution", "location", "date", "focus"):
-            candidate[field] = original[field]
+    # 3. Update projects description and bullets while preserving name, type, stack, extra_info
+    original_projects = resume_data.get("projects", [])
+    model_projects = model_resume.get("projects", [])
+    if isinstance(model_projects, list):
+        for index, original in enumerate(original_projects):
+            if index < len(model_projects) and isinstance(model_projects[index], dict):
+                candidate = model_projects[index]
+                if candidate.get("description"):
+                    final_resume["projects"][index]["description"] = str(candidate["description"]).strip()
+                bullets = candidate.get("bullets")
+                if isinstance(bullets, list) and len(bullets) == len(original.get("bullets", [])):
+                    final_resume["projects"][index]["bullets"] = [str(b).strip() for b in bullets]
 
+    # 4. Update research description while preserving title, institution, location, date, focus
+    original_research = resume_data.get("research", [])
+    model_research = model_resume.get("research", [])
+    if isinstance(model_research, list):
+        for index, original in enumerate(original_research):
+            if index < len(model_research) and isinstance(model_research[index], dict):
+                candidate = model_research[index]
+                if candidate.get("description"):
+                    final_resume["research"][index]["description"] = str(candidate["description"]).strip()
+
+    optimized["resume"] = final_resume
     return optimized
