@@ -486,3 +486,80 @@ class CoverLetter(BaseModel):
     generation_context: Optional[CoverLetterGenerationContext] = None
     created_at: str
     updated_at: Optional[str] = None
+
+
+class CritiqueSeverity(str, Enum):
+    critical = "critical"
+    warning = "warning"
+    suggestion = "suggestion"
+
+
+class CritiqueCategory(str, Enum):
+    impact = "impact"
+    brevity = "brevity"
+    style = "style"
+    structure = "structure"
+    ats = "ats"
+
+
+class CritiqueIssue(BaseModel):
+    id: str
+    section: str
+    location_label: str
+    severity: CritiqueSeverity
+    category: CritiqueCategory
+    problem: str
+    why_it_hurts: str
+    original_text: str
+    suggested_fix: str
+
+
+class CategoryScore(BaseModel):
+    category: CritiqueCategory
+    label: str
+    score: int
+    summary: str
+
+
+class CritiqueReport(BaseModel):
+    overall_score: int
+    verdict: str
+    summary: str
+    category_scores: list[CategoryScore] = Field(default_factory=list)
+    strengths: list[str] = Field(default_factory=list)
+    critical_count: int = 0
+    warning_count: int = 0
+    suggestion_count: int = 0
+    issues: list[CritiqueIssue] = Field(default_factory=list)
+
+
+class CVCritiqueRequest(BaseModel):
+    resume_version_id: int
+    target_role: Optional[str] = None
+    job_description: Optional[str] = None
+    instructions: Optional[str] = None
+
+
+class CVCritiqueResponse(BaseModel):
+    id: int
+    resume_version_id: int
+    target_role: Optional[str] = None
+    job_description: Optional[str] = None
+    provider: str
+    overall_score: int
+    summary: str
+    report: CritiqueReport
+    created_at: str
+
+
+class CVCritiqueSummary(BaseModel):
+    id: int
+    resume_version_id: int
+    target_role: Optional[str] = None
+    provider: str
+    overall_score: int
+    verdict: str
+    critical_count: int
+    warning_count: int
+    created_at: str
+

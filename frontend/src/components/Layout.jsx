@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { PenLine, Layers, Briefcase, Target, Mail, Command, Building2, Bot, Database, CircleAlert } from 'lucide-react';
+import { PenLine, Layers, Briefcase, Target, Mail, Command, Building2, Bot, Database, CircleAlert, SearchCheck } from 'lucide-react';
 import { useAIProvider } from '../App';
 import { systemApi } from '../api';
 import './Layout.css';
@@ -51,6 +51,10 @@ export default function Layout({ children }) {
           <NavLink to="/optimize" aria-label="Tailor resume" title="Tailor resume" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><Target size={16} /></span>
             <span><strong>Tailor</strong><small className="nav-new">AI</small></span>
+          </NavLink>
+          <NavLink to="/critique" aria-label="Review" title="Review" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><SearchCheck size={16} /></span>
+            <span><strong>Critique</strong><small className="nav-new">AI</small></span>
           </NavLink>
           <NavLink to="/cover-letters" aria-label="Cover letters" title="Cover letters" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><Mail size={16} /></span>

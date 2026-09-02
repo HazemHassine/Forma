@@ -98,6 +98,7 @@ async function request(endpoint, options = {}) {
 export const resumeApi = {
   templates: () => request('/resumes/templates'),
   list: () => request('/resumes'),
+  listVersions: () => request('/resumes'),
   get: (id) => request(`/resumes/${id}`),
   create: (data) => request('/resumes', { method: 'POST', body: data }),
   update: (id, data) => request(`/resumes/${id}`, { method: 'PUT', body: data }),
@@ -160,6 +161,13 @@ export const photoApi = {
     return request('/photos/upload', { method: 'POST', body: formData });
   },
   getUrl: (path) => path || '',
+};
+
+export const critiqueApi = {
+  create: (provider, data) => request(`/cv-critique/${aiProviderSegment(provider)}`, { method: 'POST', body: data }),
+  listForVersion: (versionId) => request(`/cv-critique/version/${versionId}`),
+  get: (id) => request(`/cv-critique/${id}`),
+  delete: (id) => request(`/cv-critique/${id}`, { method: 'DELETE' }),
 };
 
 export const systemApi = {
