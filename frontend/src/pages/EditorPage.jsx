@@ -28,6 +28,9 @@ const FALLBACK_TEMPLATES = [
   { id: 'executive', name: 'Executive', description: 'Confident navy and gold', accent: '#13233f' },
   { id: 'creative', name: 'Creative', description: 'Warm editorial character', accent: '#bb4d3e' },
   { id: 'technical', name: 'Technical', description: 'Compact and precise', accent: '#146b52' },
+  { id: 'latex', name: 'LaTeX', description: 'Academic single-column typesetting', accent: '#111111' },
+  { id: 'ats', name: 'ATS Simple', description: 'Plain parsing-first document flow', accent: '#2f3b46' },
+  { id: 'timeline', name: 'Timeline', description: 'Dates lead a chronological rail', accent: '#315b7d' },
 ];
 
 export default function EditorPage() {
@@ -197,11 +200,11 @@ export default function EditorPage() {
       <div className="editor-topbar">
         <div className="editor-topbar-left">
           <div className="editor-context-icon"><FilePenLine size={17} /></div>
-          <div className="editor-context-copy"><span>Editing resume</span><strong>{resumeName}</strong></div>
+          <div className="editor-context-copy"><span>Editing resume</span><strong title={resumeName}>{resumeName}</strong></div>
           <select className="version-selector" value={currentId || ''} onChange={handleVersionChange}>
             {!currentId && <option value="">New Resume</option>}
             {versions.map(v => (
-              <option key={v.id} value={v.id}>{v.name}{v.is_current ? ' ★' : ''}</option>
+              <option key={v.id} value={v.id} title={v.name}>{v.name}{v.is_current ? ' ★' : ''}</option>
             ))}
           </select>
           <div className={`save-indicator ${saveState}`}>
@@ -227,13 +230,13 @@ export default function EditorPage() {
                     <button
                       type="button"
                       key={template.id}
-                      className={`template-option ${template.id === templateId ? 'selected' : ''}`}
+                      className={`template-option template-option-${template.id} ${template.id === templateId ? 'selected' : ''}`}
                       onClick={() => handleTemplateChange(template.id)}
                     >
                       <span className="template-swatch" style={{ '--template-accent': template.accent }}>
                         <i></i><i></i><i></i>
                       </span>
-                      <span><strong>{template.name}</strong><small>{template.description}</small></span>
+                      <span><strong>{template.name}</strong><small title={template.description}>{template.description}</small></span>
                       {template.id === templateId && <Check size={14} />}
                     </button>
                   ))}

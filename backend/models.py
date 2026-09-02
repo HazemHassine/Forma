@@ -16,6 +16,9 @@ class ResumeTemplate(str, Enum):
     executive = "executive"
     creative = "creative"
     technical = "technical"
+    latex = "latex"
+    ats = "ats"
+    timeline = "timeline"
 
 
 class PersonalInfo(BaseModel):

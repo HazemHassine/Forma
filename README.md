@@ -13,7 +13,7 @@ building cover letters, researching companies, and tracking job applications.
   editing, and PDF export
 - Standalone, source-backed company research reports
 - Supabase Postgres storage with a zero-config SQLite fallback
-- Six switchable PDF résumé templates fed by the same résumé data
+- Nine switchable PDF résumé templates fed by the same résumé data
 
 ## Screenshots
 
@@ -232,9 +232,9 @@ Copy `backend/.env.example` to `backend/.env` and configure:
 
 ```dotenv
 GEMINI_API_KEY=your_api_key_here
-GEMINI_MODEL=gemini-3.7-flash
-GEMINI_COVER_LETTER_MODEL=gemini-3.7-flash
-GEMINI_COMPANY_RESEARCH_MODEL=gemini-3.7-flash
+GEMINI_MODEL=gemini-3.8-flash
+GEMINI_COVER_LETTER_MODEL=gemini-3.8-flash
+GEMINI_COMPANY_RESEARCH_MODEL=gemini-3.8-flash
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_RESUME_MODEL=gpt-5.6-sol
 OPENAI_COVER_LETTER_MODEL=gpt-5.6-sol
@@ -260,9 +260,12 @@ Open a résumé and choose **Template** in the editor toolbar. Forma includes:
 - Executive
 - Creative
 - Technical
+- LaTeX — academic, single-column typesetting
+- ATS Simple — plain parsing-first document flow
+- Timeline — dates lead a chronological rail
 
 The selected template is stored on the résumé version. Switching templates
-changes only presentation; all six render the same structured résumé data.
+changes only presentation; all nine render the same structured résumé data.
 PDF rendering uses bundled system fonts and does not depend on Google Fonts or
 another external asset server.
 

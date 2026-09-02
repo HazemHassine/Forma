@@ -22,6 +22,9 @@ RESUME_TEMPLATES = [
     {"id": "executive", "name": "Executive", "description": "Confident navy and gold", "accent": "#13233f"},
     {"id": "creative", "name": "Creative", "description": "Warm editorial character", "accent": "#bb4d3e"},
     {"id": "technical", "name": "Technical", "description": "Compact and precise", "accent": "#146b52"},
+    {"id": "latex", "name": "LaTeX", "description": "Academic single-column typesetting", "accent": "#111111"},
+    {"id": "ats", "name": "ATS Simple", "description": "Plain parsing-first document flow", "accent": "#2f3b46"},
+    {"id": "timeline", "name": "Timeline", "description": "Dates lead a chronological rail", "accent": "#315b7d"},
 ]
 
 

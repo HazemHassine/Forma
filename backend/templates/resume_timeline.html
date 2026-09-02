@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: A4; margin: 0 36pt 38pt; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #24323e;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 9pt;
+      line-height: 1.34;
+    }
+    p, li, a, span, h1, h2, h3 {
+      overflow-wrap: anywhere;
+      word-wrap: break-word;
+      hyphens: auto;
+    }
+    a { color: inherit; text-decoration: none; }
+    .header { margin: 0 -36pt 14pt; padding: 25pt 36pt 17pt; color: white; background: #315b7d; }
+    .header-main { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 7pt 20pt; }
+    .identity { flex: 1 1 270pt; min-width: 0; }
+    .name { margin: 0; font-size: 24pt; line-height: 1.05; }
+    .title { margin: 4pt 0 0; font-size: 10pt; }
+    .contact { flex: 1 1 190pt; min-width: 0; font-size: 8pt; line-height: 1.5; text-align: right; }
+    .contact div { overflow-wrap: anywhere; }
+    .section-title {
+      margin: 12pt 0 6pt;
+      color: #315b7d;
+      font-size: 11pt;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      break-after: avoid;
+    }
+    .summary { margin: 0 0 2pt; padding: 8pt 10pt; background: #eef3f6; border-left: 3pt solid #315b7d; }
+    .timeline-item { display: flex; align-items: stretch; break-inside: auto; }
+    .timeline-date {
+      flex: 0 0 92pt;
+      padding: 3pt 12pt 9pt 0;
+      border-right: 1.2pt solid #8aa4b8;
+      color: #315b7d;
+      font-size: 8pt;
+      font-weight: 700;
+      text-align: right;
+    }
+    .timeline-content { position: relative; flex: 1 1 auto; min-width: 0; padding: 2pt 0 9pt 15pt; }
+    .timeline-content::before {
+      content: "";
+      position: absolute;
+      left: -3.8pt;
+      top: 5pt;
+      width: 6pt;
+      height: 6pt;
+      border-radius: 50%;
+      background: #315b7d;
+    }
+    .entry-title { margin: 0; color: #172531; font-size: 9.6pt; break-after: avoid; }
+    .entry-subtitle { margin: 1pt 0 0; font-weight: 700; break-after: avoid; }
+    .entry-description, .entry-meta, .entry-detail { margin: 2pt 0 0; }
+    .entry-description { font-style: italic; }
+    ul { margin: 3pt 0 0; padding-left: 14pt; break-before: avoid; }
+    li { margin-bottom: 1.5pt; }
+    .skills-grid { display: flex; flex-wrap: wrap; gap: 6pt; }
+    .skill-card { flex: 1 1 155pt; min-width: 0; padding: 6pt 8pt; border: .7pt solid #c6d3dc; background: #f8fafb; break-inside: avoid; }
+    .skill-card strong { display: block; margin-bottom: 2pt; color: #315b7d; }
+    .meta-grid { display: flex; flex-wrap: wrap; gap: 8pt 24pt; }
+    .meta-column { flex: 1 1 190pt; min-width: 0; }
+    .compact { margin: 0 0 2.5pt; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-main">
+      <div class="identity"><h1 class="name">{{ resume.personal_info.name }}</h1><p class="title">{{ resume.personal_info.title }}</p></div>
+      <div class="contact">
+        {% if resume.personal_info.address %}<div>{{ resume.personal_info.address }}</div>{% endif %}
+        {% if resume.personal_info.phone %}<div>{{ resume.personal_info.phone }}</div>{% endif %}
+        {% if resume.personal_info.email %}<div><a href="mailto:{{ resume.personal_info.email }}">{{ resume.personal_info.email }}</a></div>{% endif %}
+        {% if resume.personal_info.github %}<div><a href="https://{{ resume.personal_info.github }}">{{ resume.personal_info.github }}</a></div>{% endif %}
+        {% if resume.personal_info.linkedin %}<div><a href="https://{{ resume.personal_info.linkedin }}">{{ resume.personal_info.linkedin }}</a></div>{% endif %}
+      </div>
+    </div>
+  </header>
+
+  {% if resume.about_me %}<section><h2 class="section-title">Profile</h2><p class="summary">{{ resume.about_me }}</p></section>{% endif %}
+
+  {% if resume.work_experience %}
+  <section><h2 class="section-title">Experience Timeline</h2>
+    {% for job in resume.work_experience %}<article class="timeline-item"><div class="timeline-date">{{ job.dates }}</div><div class="timeline-content">
+      <h3 class="entry-title">{{ job.company }}{% if job.location %}, {{ job.location }}{% endif %}</h3><p class="entry-subtitle">{{ job.role }}</p>
+      {% if job.bullets %}<ul>{% for bullet in job.bullets %}<li>{{ bullet }}</li>{% endfor %}</ul>{% endif %}
+    </div></article>{% endfor %}
+  </section>
+  {% endif %}
+
+  {% if resume.education %}
+  <section><h2 class="section-title">Education Timeline</h2>
+    {% for edu in resume.education %}<article class="timeline-item"><div class="timeline-date">{{ edu.dates }}</div><div class="timeline-content">
+      <h3 class="entry-title">{{ edu.institution }}{% if edu.location %}, {{ edu.location }}{% endif %}</h3><p class="entry-subtitle">{{ edu.degree }}</p>{% if edu.details %}<p class="entry-detail">{{ edu.details }}</p>{% endif %}
+    </div></article>{% endfor %}
+  </section>
+  {% endif %}
+
+  {% if resume.projects %}
+  <section><h2 class="section-title">Projects</h2>
+    {% for project in resume.projects %}<article class="timeline-item"><div class="timeline-date">{{ project.type }}</div><div class="timeline-content">
+      <h3 class="entry-title">{{ project.name }}</h3><p class="entry-description">{{ project.description }}</p>{% if project.stack %}<p class="entry-meta"><strong>Stack:</strong> {{ project.stack }}</p>{% endif %}{% if project.extra_info %}<p class="entry-meta">{{ project.extra_info }}</p>{% endif %}
+      {% if project.bullets %}<ul>{% for bullet in project.bullets %}<li>{{ bullet }}</li>{% endfor %}</ul>{% endif %}
+    </div></article>{% endfor %}
+  </section>
+  {% endif %}
+
+  {% if resume.research %}
+  <section><h2 class="section-title">Research</h2>
+    {% for item in resume.research %}<article class="timeline-item"><div class="timeline-date">{{ item.date }}</div><div class="timeline-content">
+      <h3 class="entry-title">{{ item.title }}</h3><p class="entry-subtitle">{{ item.institution }}{% if item.location %}, {{ item.location }}{% endif %}</p><p class="entry-detail">{{ item.description }}</p>{% if item.focus %}<p class="entry-meta"><strong>Focus:</strong> {{ item.focus }}</p>{% endif %}
+    </div></article>{% endfor %}
+  </section>
+  {% endif %}
+
+  {% if resume.skills %}<section><h2 class="section-title">Skills</h2><div class="skills-grid">{% for skill in resume.skills %}<div class="skill-card"><strong>{{ skill.category }}</strong>{{ skill["items"] | join(", ") }}</div>{% endfor %}</div></section>{% endif %}
+
+  <div class="meta-grid">
+    {% if resume.languages %}<section class="meta-column"><h2 class="section-title">Languages</h2>{% for lang in resume.languages %}<p class="compact"><strong>{{ lang.language }}</strong> — {{ lang.level }}</p>{% endfor %}</section>{% endif %}
+    {% if resume.certificates %}<section class="meta-column"><h2 class="section-title">Certificates</h2>{% for cert in resume.certificates %}<p class="compact"><strong>{{ cert.name }}</strong>{% if cert.issuer %}<br>{{ cert.issuer }}{% endif %}</p>{% endfor %}</section>{% endif %}
+  </div>
+  {% if resume.references %}<section><h2 class="section-title">References</h2><p>{{ resume.references }}</p></section>{% endif %}
+</body>
+</html>

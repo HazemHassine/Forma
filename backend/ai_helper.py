@@ -94,7 +94,7 @@ No markdown, code fences, commentary, or additional keys.
 """
 
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.7-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 OPENAI_RESUME_MODEL = os.getenv("OPENAI_RESUME_MODEL", "gpt-5.6-sol")
 
 
@@ -146,14 +146,37 @@ class AIGraphState(TypedDict, total=False):
     result: Any
 
 
+def _clean_schema_for_gemini(schema: Any) -> Any:
+    """Strip constraints unsupported by Gemini's JSON schema parser."""
+    if not isinstance(schema, dict):
+        return schema
+    cleaned = {}
+    for key, value in schema.items():
+        if key in {"minItems", "maxItems"}:
+            continue
+        if isinstance(value, dict):
+            cleaned[key] = _clean_schema_for_gemini(value)
+        elif isinstance(value, list):
+            cleaned[key] = [_clean_schema_for_gemini(item) for item in value]
+        else:
+            cleaned[key] = value
+    return cleaned
+
+
 def _invoke_model(state: AIGraphState) -> AIGraphState:
+    provider = state.get("provider", "gemini")
     model = _get_model(
-        provider=state.get("provider", "gemini"),
+        provider=provider,
         max_tokens=state["max_tokens"],
     )
     if state.get("schema"):
+        schema = (
+            _clean_schema_for_gemini(state["schema"])
+            if provider == "gemini"
+            else state["schema"]
+        )
         model = model.with_structured_output(
-            state["schema"],
+            schema,
             method="json_schema",
         )
     response = model.invoke(state["messages"])

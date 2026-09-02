@@ -54,6 +54,7 @@
 .template-picker { position: relative; z-index: 1; }
 .template-menu {
   position: absolute; top: calc(100% + 9px); right: 0; z-index: 1000; width: 470px;
+  max-height: calc(100vh - 86px); overflow-y: auto;
   padding: 14px; border: 1px solid var(--border-default); border-radius: 12px;
   background: var(--bg-surface); box-shadow: var(--shadow-lg);
 }
@@ -70,7 +71,7 @@
 .template-option.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
 .template-option > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
 .template-option strong { font-size: 12px; font-weight: 650; }
-.template-option small { margin-top: 2px; color: var(--text-muted); font-size: 9.5px; white-space: nowrap; }
+.template-option small { margin-top: 2px; color: var(--text-muted); font-size: 9.5px; line-height: 1.25; white-space: normal; overflow-wrap: anywhere; }
 .template-option > svg { color: var(--accent); }
 .template-swatch {
   height: 42px; padding: 7px 6px; border-radius: 5px; background: #faf9f5;
@@ -79,6 +80,13 @@
 .template-swatch i { display: block; height: 2px; border-radius: 2px; background: #d6d4ce; }
 .template-swatch i:nth-child(2) { width: 72%; background: var(--template-accent); opacity: .65; }
 .template-swatch i:nth-child(3) { width: 86%; }
+.template-option-latex .template-swatch { border-top-width: 1px; background: #fff; }
+.template-option-latex .template-swatch i { height: 1px; background: #686868; }
+.template-option-latex .template-swatch i:first-child { width: 55%; margin: 0 auto 2px; height: 2px; background: #222; }
+.template-option-ats .template-swatch { border-top: 0; border-left: 4px solid var(--template-accent); background: #fff; }
+.template-option-ats .template-swatch i { width: 100%; }
+.template-option-timeline .template-swatch { border-top: 0; border-left: 2px solid var(--template-accent); border-radius: 0 5px 5px 0; }
+.template-option-timeline .template-swatch i { margin-left: 5px; }
 
 .save-indicator {
   display: flex;

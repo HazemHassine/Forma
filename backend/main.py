@@ -94,7 +94,7 @@ async def system_status():
         "ai": {
             "gemini": {
                 "configured": bool(os.getenv("GEMINI_API_KEY")),
-                "model": os.getenv("GEMINI_MODEL", "gemini-3.7-flash"),
+                "model": os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
             },
             "chatgpt": {
                 "configured": bool(os.getenv("OPENAI_API_KEY")),

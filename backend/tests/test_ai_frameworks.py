@@ -211,6 +211,50 @@ class LangChainOpenAITests(unittest.TestCase):
             ],
         )
 
+    def test_gemini_clean_schema_removes_min_and_max_items(self):
+        raw_schema = {
+            "type": "object",
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "items": {"type": "string"},
+                },
+                "nested": {
+                    "type": "object",
+                    "properties": {
+                        "urls": {
+                            "type": "array",
+                            "minItems": 2,
+                            "items": {"type": "string"},
+                        }
+                    },
+                },
+            },
+        }
+
+        cleaned = openai_helper._clean_schema_for_gemini(raw_schema)
+
+        self.assertNotIn("minItems", cleaned["properties"]["tags"])
+        self.assertNotIn("maxItems", cleaned["properties"]["tags"])
+        self.assertNotIn(
+            "minItems",
+            cleaned["properties"]["nested"]["properties"]["urls"],
+        )
+        self.assertEqual(cleaned["type"], "object")
+
+    def test_gemini_consulted_sources_extracts_urls_from_text(self):
+        message = AIMessage(
+            content="Read more at https://company.com/report and https://news.example.com/item.",
+            response_metadata={},
+        )
+
+        sources = openai_helper._consulted_web_sources(message)
+        urls = [s["url"] for s in sources]
+        self.assertIn("https://company.com/report", urls)
+        self.assertIn("https://news.example.com/item", urls)
+
 
 if __name__ == "__main__":
     unittest.main()

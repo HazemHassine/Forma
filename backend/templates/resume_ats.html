@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: A4; margin: 34pt 42pt 38pt; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #17212b;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 9.4pt;
+      line-height: 1.36;
+    }
+    p, li, a, span, h1, h2, h3 {
+      overflow-wrap: anywhere;
+      word-wrap: break-word;
+      hyphens: auto;
+    }
+    a { color: inherit; text-decoration: none; }
+    .header { border-left: 5pt solid #2f3b46; padding-left: 12pt; margin-bottom: 13pt; }
+    .name { margin: 0; font-size: 23pt; line-height: 1.08; letter-spacing: -.35pt; color: #101820; }
+    .title { margin: 3pt 0 0; font-size: 10.5pt; font-weight: 700; }
+    .contact { margin-top: 7pt; font-size: 8.6pt; line-height: 1.45; }
+    .contact span:not(:last-child)::after { content: "  |  "; color: #7a838c; }
+    .section-title {
+      margin: 12pt 0 5pt;
+      padding-bottom: 2.5pt;
+      border-bottom: .8pt solid #2f3b46;
+      color: #101820;
+      font-size: 10pt;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+      break-after: avoid;
+    }
+    .summary { margin: 0; }
+    .entry { margin: 0 0 7pt; break-inside: auto; }
+    .entry-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2pt 10pt; break-after: avoid; }
+    .entry-head-main { flex: 1 1 270pt; min-width: 0; }
+    .entry-head h3 { display: inline; margin: 0; font-size: 9.6pt; }
+    .location { font-weight: 400; }
+    .dates { flex: 0 1 auto; margin-left: auto; color: #505b65; font-size: 8.6pt; font-weight: 700; text-align: right; }
+    .role { margin: 1pt 0 0; font-weight: 700; break-after: avoid; }
+    .details, .description, .stack, .extra, .focus { margin: 1.5pt 0 0; }
+    .description, .focus { font-style: italic; }
+    ul { margin: 2.5pt 0 0; padding-left: 15pt; break-before: avoid; }
+    li { margin: 0 0 1.5pt; }
+    .skills { margin: 0; }
+    .skill-row { margin: 0 0 2.5pt; }
+    .skill-row strong { color: #101820; }
+    .inline-list { margin: 0; padding: 0; list-style: none; }
+    .inline-list li { display: inline; }
+    .inline-list li:not(:last-child)::after { content: " • "; color: #6d7780; }
+    .meta-grid { display: flex; flex-wrap: wrap; gap: 10pt 28pt; }
+    .meta-block { flex: 1 1 180pt; min-width: 0; }
+    .certificate { margin-bottom: 2pt; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1 class="name">{{ resume.personal_info.name }}</h1>
+    <p class="title">{{ resume.personal_info.title }}</p>
+    <div class="contact">
+      {% if resume.personal_info.address %}<span>{{ resume.personal_info.address }}</span>{% endif %}
+      {% if resume.personal_info.phone %}<span>{{ resume.personal_info.phone }}</span>{% endif %}
+      {% if resume.personal_info.email %}<span><a href="mailto:{{ resume.personal_info.email }}">{{ resume.personal_info.email }}</a></span>{% endif %}
+      {% if resume.personal_info.github %}<span><a href="https://{{ resume.personal_info.github }}">{{ resume.personal_info.github }}</a></span>{% endif %}
+      {% if resume.personal_info.linkedin %}<span><a href="https://{{ resume.personal_info.linkedin }}">{{ resume.personal_info.linkedin }}</a></span>{% endif %}
+    </div>
+  </header>
+
+  {% if resume.about_me %}
+  <section><h2 class="section-title">Professional Summary</h2><p class="summary">{{ resume.about_me }}</p></section>
+  {% endif %}
+
+  {% if resume.work_experience %}
+  <section>
+    <h2 class="section-title">Experience</h2>
+    {% for job in resume.work_experience %}
+    <article class="entry">
+      <div class="entry-head"><div class="entry-head-main"><h3>{{ job.company }}{% if job.location %}, <span class="location">{{ job.location }}</span>{% endif %}</h3></div><span class="dates">{{ job.dates }}</span></div>
+      <p class="role">{{ job.role }}</p>
+      {% if job.bullets %}<ul>{% for bullet in job.bullets %}<li>{{ bullet }}</li>{% endfor %}</ul>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if resume.projects %}
+  <section>
+    <h2 class="section-title">Projects</h2>
+    {% for project in resume.projects %}
+    <article class="entry">
+      <div class="entry-head"><div class="entry-head-main"><h3>{{ project.name }}</h3> — {{ project.type }}</div></div>
+      <p class="description">{{ project.description }}</p>
+      {% if project.stack %}<p class="stack"><strong>Technologies:</strong> {{ project.stack }}</p>{% endif %}
+      {% if project.extra_info %}<p class="extra">{{ project.extra_info }}</p>{% endif %}
+      {% if project.bullets %}<ul>{% for bullet in project.bullets %}<li>{{ bullet }}</li>{% endfor %}</ul>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if resume.education %}
+  <section>
+    <h2 class="section-title">Education</h2>
+    {% for edu in resume.education %}
+    <article class="entry">
+      <div class="entry-head"><div class="entry-head-main"><h3>{{ edu.institution }}{% if edu.location %}, <span class="location">{{ edu.location }}</span>{% endif %}</h3></div><span class="dates">{{ edu.dates }}</span></div>
+      <p class="role">{{ edu.degree }}</p>
+      {% if edu.details %}<p class="details">{{ edu.details }}</p>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if resume.research %}
+  <section>
+    <h2 class="section-title">Research</h2>
+    {% for item in resume.research %}
+    <article class="entry">
+      <div class="entry-head"><div class="entry-head-main"><h3>{{ item.title }}</h3></div><span class="dates">{{ item.date }}</span></div>
+      <p class="role">{{ item.institution }}{% if item.location %}, {{ item.location }}{% endif %}</p>
+      <p class="details">{{ item.description }}</p>
+      {% if item.focus %}<p class="focus"><strong>Focus:</strong> {{ item.focus }}</p>{% endif %}
+    </article>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% if resume.skills %}
+  <section class="skills">
+    <h2 class="section-title">Skills</h2>
+    {% for skill in resume.skills %}<p class="skill-row"><strong>{{ skill.category }}:</strong> {{ skill["items"] | join(", ") }}</p>{% endfor %}
+  </section>
+  {% endif %}
+
+  <div class="meta-grid">
+    {% if resume.languages %}
+    <section class="meta-block"><h2 class="section-title">Languages</h2><ul class="inline-list">{% for lang in resume.languages %}<li><strong>{{ lang.language }}</strong> ({{ lang.level }})</li>{% endfor %}</ul></section>
+    {% endif %}
+    {% if resume.certificates %}
+    <section class="meta-block"><h2 class="section-title">Certificates</h2>{% for cert in resume.certificates %}<p class="certificate"><strong>{{ cert.name }}</strong>{% if cert.issuer %} — {{ cert.issuer }}{% endif %}</p>{% endfor %}</section>
+    {% endif %}
+  </div>
+  {% if resume.references %}<section><h2 class="section-title">References</h2><p>{{ resume.references }}</p></section>{% endif %}
+</body>
+</html>

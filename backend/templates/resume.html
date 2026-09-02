@@ -14,6 +14,12 @@
             box-sizing: border-box;
         }
 
+        p, li, a, span, h1, h2 {
+            overflow-wrap: anywhere;
+            word-wrap: break-word;
+            hyphens: auto;
+        }
+
         body {
             font-family: Georgia, 'Times New Roman', serif;
             font-size: 9pt;
@@ -304,7 +310,18 @@
             padding-top: 2pt;
         }
 
-        /* The same résumé data is rendered through six intentionally distinct themes. */
+        h1.section-header,
+        h2.entry-title,
+        .entry-subtitle,
+        .entry-dates {
+            break-after: avoid;
+        }
+
+        ul.entry-bullets {
+            break-before: avoid;
+        }
+
+        /* Legacy themes share this two-column document structure. */
         body.template-classic { color: #352f2a; font-size: 9.2pt; }
         body.template-classic .header-name { color: #352f2a; font-size: 22pt; }
         body.template-classic h1.section-header { color: #5b4636; border-color: #b8a795; letter-spacing: .08em; }

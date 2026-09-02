@@ -3,7 +3,7 @@ import os
 import re
 import time
 from datetime import datetime, timezone
-from typing import TypedDict
+from typing import Any, TypedDict
 from urllib import error, request
 from urllib.parse import parse_qsl, quote, urlencode, urlsplit, urlunsplit
 
@@ -27,7 +27,7 @@ OPENAI_COMPANY_RESEARCH_MODEL = (
 )
 GEMINI_COVER_LETTER_MODEL = os.getenv(
     "GEMINI_COVER_LETTER_MODEL",
-    os.getenv("GEMINI_MODEL", "gemini-3.7-flash"),
+    os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
 )
 GEMINI_COMPANY_RESEARCH_MODEL = os.getenv(
     "GEMINI_COMPANY_RESEARCH_MODEL",
@@ -873,6 +873,23 @@ class StructuredGraphState(TypedDict, total=False):
     raw: AIMessage
 
 
+def _clean_schema_for_gemini(schema: Any) -> Any:
+    """Strip constraints unsupported by Gemini's JSON schema parser."""
+    if not isinstance(schema, dict):
+        return schema
+    cleaned = {}
+    for key, value in schema.items():
+        if key in {"minItems", "maxItems"}:
+            continue
+        if isinstance(value, dict):
+            cleaned[key] = _clean_schema_for_gemini(value)
+        elif isinstance(value, list):
+            cleaned[key] = [_clean_schema_for_gemini(item) for item in value]
+        else:
+            cleaned[key] = value
+    return cleaned
+
+
 def _invoke_structured_model(state: StructuredGraphState) -> StructuredGraphState:
     provider = state.get("provider", "chatgpt")
     messages = [
@@ -884,24 +901,72 @@ def _invoke_structured_model(state: StructuredGraphState) -> StructuredGraphStat
         model = _get_gemini_model(state.get("model"))
         raw_search = None
         if state.get("tools"):
+            context = state.get("context", {})
+            company = (
+                context.get("company")
+                or context.get("known_company")
+                or "the company"
+            )
+            website = (
+                context.get("website_url")
+                or context.get("source_url")
+                or ""
+            )
+            role = (
+                context.get("role")
+                or context.get("position")
+                or context.get("known_position")
+                or ""
+            )
+            job_context = (
+                context.get("job_context")
+                or context.get("role_summary")
+                or ""
+            )
+            focus = context.get("focus") or ""
+
+            research_prompt = (
+                f"You are an expert corporate and technical researcher. Use Google Search to thoroughly research {company}"
+                + (f" ({website})" if website else "")
+                + (f" with a focus on the role '{role}'" if role else "")
+                + (f" and job context: {job_context[:500]}" if job_context else "")
+                + (f". Research focus: {focus}" if focus else "")
+                + ".\n\n"
+                "Find current, factual information regarding:\n"
+                "1. Company identity: legal name, headquarters, founding year, company type, employee count, official website.\n"
+                "2. Core products, services, platforms, and technological architectures.\n"
+                "3. Business model, monetization, customer segments, and target markets.\n"
+                "4. Leadership, ownership, key executives, and verifiable financial signals.\n"
+                "5. Named competitors and market positioning.\n"
+                "6. Recent developments, product launches, and news from the last 12 months.\n"
+                "7. Strategy, engineering priorities, culture signals, and risks/watchouts.\n"
+                + (f"8. Specific relevance to the '{role}' position.\n" if role else "")
+                + "\nProvide a detailed, factual research briefing with specific facts and source citations."
+            )
+            search_messages = [
+                SystemMessage(content=research_prompt),
+                HumanMessage(content=f"Please research {company} in detail."),
+            ]
             raw_search = model.bind_tools(
                 [{"google_search": {}}]
-            ).invoke(messages)
+            ).invoke(search_messages)
             consulted_sources = _consulted_web_sources(raw_search)
-            messages.append(
+            messages = [
+                SystemMessage(content=state["instructions"]),
                 HumanMessage(
                     content=(
                         "Convert the grounded research below into the requested JSON "
-                        "schema. Cite only exact URLs from CONSULTED SOURCES. Do not "
-                        "add facts or URLs that are absent from the grounded research.\n\n"
+                        f"schema for {company}. Cite only exact URLs from CONSULTED SOURCES. "
+                        "Do not add facts or URLs that are absent from the grounded research.\n\n"
                         f"GROUNDED RESEARCH:\n{raw_search.text}\n\n"
                         "CONSULTED SOURCES:\n"
                         f"{json.dumps(consulted_sources, ensure_ascii=False)}"
                     )
-                )
-            )
+                ),
+            ]
+        gemini_schema = _clean_schema_for_gemini(state["schema"])
         response = model.with_structured_output(
-            state["schema"],
+            gemini_schema,
             method="json_schema",
             include_raw=True,
         ).invoke(messages)
@@ -1056,6 +1121,19 @@ def _consulted_web_sources(payload: dict | AIMessage) -> list[dict]:
                 sources_by_url[canonical] = {
                     "title": str(citation.get("title") or url).strip(),
                     "url": url.strip(),
+                }
+        text_content = (
+            payload.text
+            if hasattr(payload, "text")
+            else str(payload.content or "")
+        )
+        for match in re.findall(r"https?://[^\s\)\]\>\"\'\,]+", text_content):
+            clean_url = match.strip().rstrip(".,;:?!)'\"")
+            canonical = _canonical_url(clean_url)
+            if canonical and canonical not in sources_by_url:
+                sources_by_url[canonical] = {
+                    "title": canonical,
+                    "url": clean_url,
                 }
         if sources_by_url:
             return list(sources_by_url.values())
