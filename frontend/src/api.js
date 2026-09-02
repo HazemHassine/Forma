@@ -98,6 +98,7 @@ async function request(endpoint, options = {}) {
 export const resumeApi = {
   templates: () => request('/resumes/templates'),
   list: () => request('/resumes'),
+  listVersions: () => request('/resumes'),
   get: (id) => request(`/resumes/${id}`),
   create: (data) => request('/resumes', { method: 'POST', body: data }),
   update: (id, data) => request(`/resumes/${id}`, { method: 'PUT', body: data }),

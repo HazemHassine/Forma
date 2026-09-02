@@ -18,7 +18,7 @@ import Button from '../components/Button';
 import './CritiquePage.css';
 
 export default function CritiquePage() {
-  const toast = useToast();
+  const addToast = useToast();
   const { aiProvider } = useAIProvider();
 
   const [versions, setVersions] = useState([]);
@@ -40,7 +40,7 @@ export default function CritiquePage() {
   // Load resume versions on mount
   useEffect(() => {
     setLoading(true);
-    resumeApi.listVersions()
+    resumeApi.list()
       .then(data => {
         setVersions(data);
         const current = data.find(v => v.is_current) || data[0];
@@ -49,10 +49,10 @@ export default function CritiquePage() {
         }
       })
       .catch(err => {
-        toast.addToast(`Failed to load versions: ${formatApiError(err)}`, 'error');
+        addToast(`Failed to load versions: ${formatApiError(err)}`, 'error');
       })
       .finally(() => setLoading(false));
-  }, [toast]);
+  }, [addToast]);
 
   // Load critique history when selected version changes
   const loadHistory = useCallback(async (versionId) => {
@@ -68,9 +68,9 @@ export default function CritiquePage() {
         setCurrentCritique(null);
       }
     } catch (err) {
-      toast.addToast(`Failed to load reviews: ${formatApiError(err)}`, 'error');
+      addToast(`Failed to load reviews: ${formatApiError(err)}`, 'error');
     }
-  }, [toast]);
+  }, [addToast]);
 
   useEffect(() => {
     if (selectedVersionId) {
@@ -80,7 +80,7 @@ export default function CritiquePage() {
 
   const handleRunCritique = async () => {
     if (!selectedVersionId) {
-      toast.addToast('Please select a resume version', 'error');
+      addToast('Please select a resume version', 'error');
       return;
     }
 
@@ -92,11 +92,11 @@ export default function CritiquePage() {
         job_description: jobDescription.trim() || null,
       });
       setCurrentCritique(response);
-      toast.addToast('Review completed', 'success');
+      addToast('Review completed', 'success');
       // Refresh history list
       loadHistory(selectedVersionId);
     } catch (err) {
-      toast.addToast(formatApiError(err) || 'Review failed', 'error');
+      addToast(formatApiError(err) || 'Review failed', 'error');
     } finally {
       setAnalyzing(false);
     }
@@ -107,7 +107,7 @@ export default function CritiquePage() {
       const full = await critiqueApi.get(critiqueId);
       setCurrentCritique(full);
     } catch (err) {
-      toast.addToast(`Failed to load review: ${formatApiError(err)}`, 'error');
+      addToast(`Failed to load review: ${formatApiError(err)}`, 'error');
     }
   };
 
@@ -115,10 +115,10 @@ export default function CritiquePage() {
     if (!window.confirm('Delete this review?')) return;
     try {
       await critiqueApi.delete(critiqueId);
-      toast.addToast('Review deleted', 'info');
+      addToast('Review deleted', 'info');
       loadHistory(selectedVersionId);
     } catch (err) {
-      toast.addToast(`Delete failed: ${formatApiError(err)}`, 'error');
+      addToast(`Delete failed: ${formatApiError(err)}`, 'error');
     }
   };
 
