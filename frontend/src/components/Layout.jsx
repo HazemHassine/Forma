@@ -29,7 +29,6 @@ export default function Layout({ children }) {
             <div className="sidebar-brand-icon">F</div>
             <div>
               <div className="sidebar-brand-text">Forma</div>
-              <div className="sidebar-brand-sub"><span className="status-pulse" /> Private workspace</div>
             </div>
           </div>
         </div>
