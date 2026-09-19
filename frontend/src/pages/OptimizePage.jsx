@@ -130,6 +130,7 @@ export default function OptimizePage() {
   const [originalData, setOriginalData] = useState(null);
   const [draftData, setDraftData] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const selectedVersion = versions.find((version) => version.id === selectedVersionId);
 
   // PDF key for forcing iframe reload
   const [pdfKey, setPdfKey] = useState(0);
@@ -138,9 +139,10 @@ export default function OptimizePage() {
     resumeApi.list().then(data => {
       const realVersions = data;
       setVersions(realVersions);
-      const current = realVersions.find(v => v.is_current);
+      const eligible = realVersions.filter(v => !['tailored_draft', 'tailored_final'].includes(v.version_kind));
+      const current = eligible.find(v => v.is_current);
       if (current) setSelectedVersionId(current.id);
-      else if (realVersions.length > 0) setSelectedVersionId(realVersions[0].id);
+      else if (eligible.length > 0) setSelectedVersionId(eligible[0].id);
     });
   }, []);
 
@@ -209,6 +211,13 @@ export default function OptimizePage() {
         name: newDraftName,
         description: `Recoverable tailoring draft based on "${baseName}"${targetLabel ? ` for ${targetLabel}` : ''}.`,
         data: merged,
+        version_kind: 'tailored_draft',
+        parent_version_id: selectedVersionId,
+        tailoring_audit: {
+          claim_audit: data.claim_audit || [],
+          blocked_edits: data.blocked_edits || [],
+          evidence_catalog: data.evidence_catalog || [],
+        },
       });
 
       setOriginalData(data.original);
@@ -222,6 +231,9 @@ export default function OptimizePage() {
         gaps: data.gaps || [],
         keywords: data.keywords_used || [],
         contextEvidenceUsed: data.context_evidence_used || [],
+        claimAudit: data.claim_audit || [],
+        blockedEdits: data.blocked_edits || [],
+        evidenceCatalog: data.evidence_catalog || [],
       });
       localStorage.setItem('activeTailoringDraft', JSON.stringify({
         draftVersionId: draft.id,
@@ -237,14 +249,31 @@ export default function OptimizePage() {
     }
   };
 
-  const updateDraftOnServer = async (newData) => {
+  const handleMarkAuthoritative = async () => {
+    if (!selectedVersionId) return;
     try {
-      await resumeApi.update(draftVersionId, { data: newData });
-      setDraftData(newData);
-      setPdfKey(prev => prev + 1); // Refresh right iframe
-    } catch {
-      addToast('Failed to update PDF', 'error');
+      const updated = await resumeApi.markAuthoritative(selectedVersionId);
+      setVersions((current) => current.map((version) => (
+        version.id === updated.id ? { ...version, ...updated } : version
+      )));
+      addToast('Resume approved as authoritative source evidence.', 'success');
+    } catch (err) {
+      addToast(err.message || 'Failed to approve source resume', 'error');
     }
+  };
+
+  const updateDraftOnServer = async (newData, nextClaimAudit = null) => {
+    const payload = { data: newData };
+    if (nextClaimAudit) {
+      payload.tailoring_audit = {
+        claim_audit: nextClaimAudit,
+        blocked_edits: insights?.blockedEdits || [],
+        evidence_catalog: insights?.evidenceCatalog || [],
+      };
+    }
+    await resumeApi.update(draftVersionId, payload);
+    setDraftData(newData);
+    setPdfKey(prev => prev + 1); // Refresh right iframe
   };
 
   // Section-level actions
@@ -259,7 +288,9 @@ export default function OptimizePage() {
     } else {
       newData[section][index] = originalData[section][index];
     }
-    updateDraftOnServer(newData);
+    updateDraftOnServer(newData).catch((err) => {
+      addToast(err.message || 'Failed to revert section', 'error');
+    });
   };
 
   const handleRegenerateSection = async (path, sectionType, currentContent, feedback) => {
@@ -271,7 +302,9 @@ export default function OptimizePage() {
         section_type: sectionType,
         current_content: contentString,
         job_description: jobDescCache,
-        feedback: feedback
+        feedback,
+        resume_version_id: selectedVersionId,
+        field_path: path,
       });
 
       const newData = JSON.parse(JSON.stringify(draftData));
@@ -285,7 +318,13 @@ export default function OptimizePage() {
         newData[section][index][field] = response.suggestion;
       }
 
-      await updateDraftOnServer(newData);
+      const updatedPaths = new Set((response.claim_audit || []).map(item => item.field_path));
+      const nextClaimAudit = [
+        ...(insights?.claimAudit || []).filter(item => !updatedPaths.has(item.field_path)),
+        ...(response.claim_audit || []),
+      ];
+      await updateDraftOnServer(newData, nextClaimAudit);
+      setInsights((current) => current ? { ...current, claimAudit: nextClaimAudit } : current);
       addToast('Section updated!', 'success');
     } catch (err) {
       addToast('Failed to regenerate: ' + err.message, 'error');
@@ -296,7 +335,7 @@ export default function OptimizePage() {
   const handleAcceptAll = async () => {
     setProcessingDraft(true);
     try {
-      await resumeApi.update(draftVersionId, { name: draftName });
+      await resumeApi.update(draftVersionId, { name: draftName, version_kind: 'tailored_final' });
       localStorage.removeItem('activeTailoringDraft');
       addToast('Saved as a new resume version. Your source is unchanged.', 'success');
       navigate(`/editor/${draftVersionId}`);
@@ -374,6 +413,36 @@ export default function OptimizePage() {
                       <ul>
                         {insights.contextEvidenceUsed.map(item => (
                           <li key={item}><Sparkles size={11} className="evidence-sparkle" /> {item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {!!insights.blockedEdits?.length && (
+                    <div className="gap-list">
+                      <span>Unsupported edits blocked</span>
+                      <ul>
+                        {insights.blockedEdits.map((item, index) => (
+                          <li key={`${item.field_path}-${index}`}>
+                            {item.field_path}: {item.reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {!!insights.claimAudit?.filter(item => item.status === 'accepted').length && (
+                    <div className="context-evidence-brief">
+                      <span>Accepted claim evidence</span>
+                      <ul>
+                        {insights.claimAudit.filter(item => item.status === 'accepted').map((item) => (
+                          <li
+                            key={item.field_path}
+                            title={item.evidence_ids.map((id) => {
+                              const evidence = insights.evidenceCatalog?.find((entry) => entry.id === id);
+                              return evidence ? `${id}: ${evidence.text}` : id;
+                            }).join('\n')}
+                          >
+                            <ShieldCheck size={11} /> {item.field_path}: {item.evidence_ids.join(', ')}
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -480,8 +549,19 @@ export default function OptimizePage() {
           <div className="optimize-version-select">
             <label>Base Resume Version</label>
             <select value={selectedVersionId || ''} onChange={e => setSelectedVersionId(parseInt(e.target.value))}>
-              {versions.map(v => <option key={v.id} value={v.id}>{v.name} {v.is_current ? '(Current)' : ''}</option>)}
+              {versions
+                .filter(v => !['tailored_draft', 'tailored_final'].includes(v.version_kind))
+                .map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} {v.is_current ? '(Current)' : ''} {v.version_kind === 'legacy_unreviewed' ? '(Review required)' : ''}
+                  </option>
+                ))}
             </select>
+            {selectedVersion?.version_kind === 'legacy_unreviewed' && (
+              <Button variant="secondary" onClick={handleMarkAuthoritative}>
+                <ShieldCheck size={15} /> Approve this source résumé
+              </Button>
+            )}
           </div>
           <div className="optimize-version-select">
             <label>Target role <span>optional</span></label>
@@ -516,7 +596,13 @@ export default function OptimizePage() {
             <span>Enable Candidate Context Vault (injects verified background facts and scale metrics)</span>
           </label>
         </div>
-        <Button variant="primary" size="lg" onClick={handleOptimize} disabled={loading || !jobDescription.trim()} className="optimize-btn">
+        <Button
+          variant="primary"
+          size="lg"
+          onClick={handleOptimize}
+          disabled={loading || !jobDescription.trim() || selectedVersion?.version_kind === 'legacy_unreviewed'}
+          className="optimize-btn"
+        >
           {loading ? <><Loader size={18} className="spin" /> Mapping evidence to the role...</> : <><Sparkles size={18} /> Create tailored draft</>}
         </Button>
       </div>

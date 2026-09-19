@@ -105,6 +105,7 @@ export const resumeApi = {
   delete: (id) => request(`/resumes/${id}`, { method: 'DELETE' }),
   duplicate: (id, name) => request(`/resumes/${id}/duplicate`, { method: 'POST', body: { name } }),
   setCurrent: (id) => request(`/resumes/${id}/set-current`, { method: 'POST' }),
+  markAuthoritative: (id) => request(`/resumes/${id}/mark-authoritative`, { method: 'POST' }),
   getPreviewUrl: (id) => `${API_BASE}/resumes/${id}/preview`,
   getDownloadUrl: (id) => `${API_BASE}/resumes/${id}/pdf`,
 };
@@ -129,6 +130,8 @@ export const aiApi = {
       job_description: data.job_description || null,
       feedback: data.feedback || null,
       include_context: data.include_context !== false,
+      resume_version_id: data.resume_version_id || null,
+      field_path: data.field_path || null,
     },
   }),
   optimize: (provider, resumeVersionId, jobDescription, context = {}) => request(`${aiProviderPath(provider)}/optimize`, {
@@ -208,6 +211,10 @@ export const contextApi = {
   getItem: (id) => request(`/context/items/${id}`),
   updateItem: (id, data) => request(`/context/items/${id}`, { method: 'PUT', body: data }),
   toggleItem: (id) => request(`/context/items/${id}/toggle`, { method: 'POST' }),
+  verifyItem: (id, verified = true) => request(`/context/items/${id}/verify`, {
+    method: 'POST',
+    body: { verified },
+  }),
   deleteItem: (id) => request(`/context/items/${id}`, { method: 'DELETE' }),
 
   getProfile: () => request('/context/profile'),

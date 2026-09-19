@@ -99,18 +99,18 @@ class TestOptimizeResume(unittest.TestCase):
     def test_optimize_resume_preserves_all_sections_and_merges_tailored_content(self):
         mock_ai_result = {
             "resume": {
-                "about_me": "Tailored about me emphasizing backend and data pipelines.",
+                "about_me": "Engineering skills focused on backend data pipelines.",
                 "work_experience": [
                     {
                         "bullets": [
-                            "Built high-throughput dashboards using React and Python.",
+                            "Developed customer dashboards using React and Python.",
                             "Engineered indexed database queries reducing p95 latency by 30%.",
                         ]
                     }
                 ],
                 "projects": [
                     {
-                        "description": "High-throughput streaming ETL pipeline.",
+                        "description": "Python data pipeline processing records daily.",
                         "bullets": [
                             "Handled 1M+ transactions daily with Redis and Python.",
                         ],
@@ -118,7 +118,7 @@ class TestOptimizeResume(unittest.TestCase):
                 ],
                 "research": [
                     {
-                        "description": "Analyzed distributed gradient synchronization in privacy-preserving networks.",
+                        "description": "Analyzed distributed systems for federated optimization research.",
                     }
                 ],
             },
@@ -126,6 +126,14 @@ class TestOptimizeResume(unittest.TestCase):
             "strengths": ["Strong backend experience in Python", "Demonstrated database optimization"],
             "gaps": ["No direct Kubernetes production management mentioned"],
             "keywords_used": ["Python", "ETL", "Latency", "Redis"],
+            "claim_evidence": [
+                {"field_path": "about_me", "evidence_ids": ["resume:about_me", "resume:projects:0"]},
+                {"field_path": "work_experience.0.bullets.0", "evidence_ids": ["resume:work_experience:0"]},
+                {"field_path": "work_experience.0.bullets.1", "evidence_ids": ["resume:work_experience:0"]},
+                {"field_path": "projects.0.description", "evidence_ids": ["resume:projects:0"]},
+                {"field_path": "projects.0.bullets.0", "evidence_ids": ["resume:projects:0"]},
+                {"field_path": "research.0.description", "evidence_ids": ["resume:research:0"]},
+            ],
         }
 
         with mock.patch("ai_helper.AI_GRAPH.invoke", return_value={"result": mock_ai_result}):
@@ -144,18 +152,18 @@ class TestOptimizeResume(unittest.TestCase):
         # Verify tailored fields were updated
         self.assertEqual(
             optimized["resume"]["about_me"],
-            "Tailored about me emphasizing backend and data pipelines.",
+            "Engineering skills focused on backend data pipelines.",
         )
         self.assertEqual(
             optimized["resume"]["work_experience"][0]["bullets"],
             [
-                "Built high-throughput dashboards using React and Python.",
+                "Developed customer dashboards using React and Python.",
                 "Engineered indexed database queries reducing p95 latency by 30%.",
             ],
         )
         self.assertEqual(
             optimized["resume"]["projects"][0]["description"],
-            "High-throughput streaming ETL pipeline.",
+            "Python data pipeline processing records daily.",
         )
         self.assertEqual(
             optimized["resume"]["projects"][0]["bullets"],
@@ -163,7 +171,7 @@ class TestOptimizeResume(unittest.TestCase):
         )
         self.assertEqual(
             optimized["resume"]["research"][0]["description"],
-            "Analyzed distributed gradient synchronization in privacy-preserving networks.",
+            "Analyzed distributed systems for federated optimization research.",
         )
 
         # Verify immutable fields remain untouched
@@ -205,12 +213,15 @@ class TestOptimizeResume(unittest.TestCase):
         # Model returns only about_me, omitting work_experience and projects
         mock_ai_result = {
             "resume": {
-                "about_me": "Tailored about me only.",
+                "about_me": "Engineering skills summary.",
             },
             "match_summary": "High-level summary tailoring.",
             "strengths": ["Quick learner"],
             "gaps": [],
             "keywords_used": ["Python"],
+            "claim_evidence": [
+                {"field_path": "about_me", "evidence_ids": ["resume:about_me"]},
+            ],
         }
 
         with mock.patch("ai_helper.AI_GRAPH.invoke", return_value={"result": mock_ai_result}):
@@ -222,7 +233,7 @@ class TestOptimizeResume(unittest.TestCase):
 
         # ResumeData validation must still succeed
         resume_model = ResumeData(**optimized["resume"])
-        self.assertEqual(optimized["resume"]["about_me"], "Tailored about me only.")
+        self.assertEqual(optimized["resume"]["about_me"], "Engineering skills summary.")
         # Original work experience and projects must be safely preserved
         self.assertEqual(
             optimized["resume"]["work_experience"],
@@ -252,6 +263,7 @@ class TestOptimizeResume(unittest.TestCase):
             "strengths": [],
             "gaps": [],
             "keywords_used": [],
+            "claim_evidence": [],
         }
 
         with mock.patch("ai_helper.AI_GRAPH.invoke", return_value={"result": mock_ai_result}):

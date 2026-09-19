@@ -5,7 +5,13 @@ CREATE TABLE IF NOT EXISTS resume_versions (
     data TEXT NOT NULL,
     template_id TEXT NOT NULL DEFAULT 'modern',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_current BOOLEAN DEFAULT 0
+    is_current BOOLEAN DEFAULT 0,
+    version_kind TEXT NOT NULL DEFAULT 'legacy_unreviewed',
+    parent_version_id INTEGER,
+    root_version_id INTEGER,
+    tailoring_audit TEXT,
+    FOREIGN KEY (parent_version_id) REFERENCES resume_versions(id),
+    FOREIGN KEY (root_version_id) REFERENCES resume_versions(id)
 );
 
 CREATE TABLE IF NOT EXISTS job_applications (
@@ -87,6 +93,18 @@ CREATE TABLE IF NOT EXISTS context_sources (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS context_source_revisions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (source_id) REFERENCES context_sources(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_context_source_revisions_source
+ON context_source_revisions (source_id, id DESC);
+
 CREATE INDEX IF NOT EXISTS idx_context_sources_active
 ON context_sources (is_active, id DESC);
 
@@ -100,8 +118,26 @@ CREATE TABLE IF NOT EXISTS context_items (
     is_active BOOLEAN DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    verification_status TEXT NOT NULL DEFAULT 'pending',
+    origin TEXT NOT NULL DEFAULT 'manual',
+    subject_type TEXT,
+    subject_key TEXT,
     FOREIGN KEY (source_id) REFERENCES context_sources(id) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS context_item_citations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL,
+    source_revision_id INTEGER NOT NULL,
+    source_quote TEXT NOT NULL,
+    start_offset INTEGER,
+    end_offset INTEGER,
+    FOREIGN KEY (item_id) REFERENCES context_items(id) ON DELETE CASCADE,
+    FOREIGN KEY (source_revision_id) REFERENCES context_source_revisions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_context_item_citations_item
+ON context_item_citations (item_id);
 
 CREATE INDEX IF NOT EXISTS idx_context_items_category
 ON context_items (category);
@@ -120,4 +156,3 @@ CREATE TABLE IF NOT EXISTS context_profiles (
     stats TEXT NOT NULL DEFAULT '{}',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-

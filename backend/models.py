@@ -27,6 +27,14 @@ class ResumeFont(str, Enum):
     modern = "modern"
 
 
+class ResumeVersionKind(str, Enum):
+    legacy_unreviewed = "legacy_unreviewed"
+    authoritative_source = "authoritative_source"
+    manual_source = "manual_source"
+    tailored_draft = "tailored_draft"
+    tailored_final = "tailored_final"
+
+
 class CustomContactField(BaseModel):
     label: str = ""
     value: str = ""
@@ -117,6 +125,10 @@ class ResumeVersionCreate(BaseModel):
     description: Optional[str] = None
     data: ResumeData
     template_id: ResumeTemplate = ResumeTemplate.modern
+    version_kind: ResumeVersionKind = ResumeVersionKind.manual_source
+    parent_version_id: Optional[int] = None
+    root_version_id: Optional[int] = None
+    tailoring_audit: Optional[dict] = None
 
 
 class ResumeVersionUpdate(BaseModel):
@@ -124,6 +136,8 @@ class ResumeVersionUpdate(BaseModel):
     description: Optional[str] = None
     data: Optional[ResumeData] = None
     template_id: Optional[ResumeTemplate] = None
+    tailoring_audit: Optional[dict] = None
+    version_kind: Optional[ResumeVersionKind] = None
 
 
 class ResumeVersion(BaseModel):
@@ -134,6 +148,10 @@ class ResumeVersion(BaseModel):
     created_at: str
     is_current: bool
     template_id: ResumeTemplate = ResumeTemplate.modern
+    version_kind: ResumeVersionKind = ResumeVersionKind.manual_source
+    parent_version_id: Optional[int] = None
+    root_version_id: Optional[int] = None
+    tailoring_audit: Optional[dict] = None
 
 
 class ResumeVersionSummary(BaseModel):
@@ -143,6 +161,9 @@ class ResumeVersionSummary(BaseModel):
     created_at: str
     is_current: bool
     template_id: ResumeTemplate = ResumeTemplate.modern
+    version_kind: ResumeVersionKind = ResumeVersionKind.manual_source
+    parent_version_id: Optional[int] = None
+    root_version_id: Optional[int] = None
 
 
 class ResumeTemplateOption(BaseModel):
@@ -191,10 +212,13 @@ class AISuggestRequest(BaseModel):
     job_description: Optional[str] = None
     feedback: Optional[str] = None
     include_context: bool = True
+    resume_version_id: Optional[int] = None
+    field_path: Optional[str] = None
 
 
 class AISuggestResponse(BaseModel):
     suggestion: str
+    claim_audit: list[dict] = Field(default_factory=list)
 
 
 class OptimizeRequest(BaseModel):
@@ -214,6 +238,9 @@ class OptimizeResponse(BaseModel):
     gaps: list[str] = []
     keywords_used: list[str] = []
     context_evidence_used: list[str] = []
+    claim_audit: list[dict] = Field(default_factory=list)
+    blocked_edits: list[dict] = Field(default_factory=list)
+    evidence_catalog: list[dict] = Field(default_factory=list)
 
 
 class ResumeDuplicateRequest(BaseModel):
@@ -630,6 +657,11 @@ class ContextItem(BaseModel):
     content: str
     tags: list[str] = Field(default_factory=list)
     is_active: bool = True
+    verification_status: str = "pending"
+    origin: str = "manual"
+    subject_type: Optional[str] = None
+    subject_key: Optional[str] = None
+    citations: list[dict] = Field(default_factory=list)
     created_at: str
     updated_at: str
 
@@ -641,6 +673,9 @@ class ContextItemCreate(BaseModel):
     content: str
     tags: list[str] = Field(default_factory=list)
     is_active: bool = True
+    subject_type: Optional[str] = None
+    subject_key: Optional[str] = None
+    source_quote: Optional[str] = None
 
 
 class ContextItemUpdate(BaseModel):
@@ -649,6 +684,8 @@ class ContextItemUpdate(BaseModel):
     content: Optional[str] = None
     tags: Optional[list[str]] = None
     is_active: Optional[bool] = None
+    subject_type: Optional[str] = None
+    subject_key: Optional[str] = None
 
 
 class ContextProfile(BaseModel):
@@ -684,3 +721,7 @@ class ContextPreviewResponse(BaseModel):
     assembled_prompt: str
     item_count: int
     estimated_tokens: int
+
+
+class ContextVerificationRequest(BaseModel):
+    verified: bool = True

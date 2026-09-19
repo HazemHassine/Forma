@@ -17,6 +17,7 @@ import {
   Copy,
   Check,
   Zap,
+  X,
 } from 'lucide-react';
 import { contextApi, resumeApi, formatApiError } from '../api';
 import { useToast, useAIProvider } from '../App';
@@ -76,6 +77,10 @@ export default function ContextPage() {
   const [itemTitle, setItemTitle] = useState('');
   const [itemContent, setItemContent] = useState('');
   const [itemTags, setItemTags] = useState('');
+  const [itemSubjectType, setItemSubjectType] = useState('profile');
+  const [itemSubjectKey, setItemSubjectKey] = useState('candidate');
+  const [itemSourceId, setItemSourceId] = useState('');
+  const [itemSourceQuote, setItemSourceQuote] = useState('');
 
   // Preview data
   const [previewData, setPreviewData] = useState(null);
@@ -170,7 +175,7 @@ export default function ContextPage() {
         replace_existing: false,
       });
       addToast(
-        `Synthesized ${res.extracted_items_count} verified knowledge cards using ${aiProvider === 'chatgpt' ? 'ChatGPT' : 'Gemini'}!`,
+        `Synthesized ${res.extracted_items_count} evidence cards for review using ${aiProvider === 'chatgpt' ? 'ChatGPT' : 'Gemini'}!`,
         'success'
       );
       loadData();
@@ -193,6 +198,18 @@ export default function ContextPage() {
     }
   };
 
+  const handleVerifyItem = async (itemId, verified) => {
+    try {
+      const updated = await contextApi.verifyItem(itemId, verified);
+      setItems((prev) => prev.map((item) => (item.id === itemId ? updated : item)));
+      addToast(verified ? 'Evidence verified' : 'Evidence rejected', verified ? 'success' : 'info');
+      const statsRes = await contextApi.getStats();
+      setStats(statsRes);
+    } catch (err) {
+      addToast(`Verification failed: ${formatApiError(err)}`, 'error');
+    }
+  };
+
   // Handle Save (Create/Update) Item
   const handleSaveItem = async (e) => {
     e.preventDefault();
@@ -212,6 +229,8 @@ export default function ContextPage() {
           title: itemTitle.trim(),
           content: itemContent.trim(),
           tags: tagsArray,
+          subject_type: itemSubjectType || null,
+          subject_key: itemSubjectKey.trim().toLowerCase() || null,
         });
         addToast('Knowledge card updated', 'success');
       } else {
@@ -221,6 +240,10 @@ export default function ContextPage() {
           content: itemContent.trim(),
           tags: tagsArray,
           is_active: true,
+          subject_type: itemSubjectType || null,
+          subject_key: itemSubjectKey.trim().toLowerCase() || null,
+          source_id: itemSourceId ? Number(itemSourceId) : null,
+          source_quote: itemSourceQuote.trim() || null,
         });
         addToast('Knowledge card added', 'success');
       }
@@ -229,6 +252,10 @@ export default function ContextPage() {
       setItemTitle('');
       setItemContent('');
       setItemTags('');
+      setItemSubjectType('profile');
+      setItemSubjectKey('candidate');
+      setItemSourceId('');
+      setItemSourceQuote('');
       loadData();
     } catch (err) {
       addToast(`Failed to save item: ${formatApiError(err)}`, 'error');
@@ -242,6 +269,10 @@ export default function ContextPage() {
     setItemTitle(item.title);
     setItemContent(item.content);
     setItemTags((item.tags || []).join(', '));
+    setItemSubjectType(item.subject_type || 'profile');
+    setItemSubjectKey(item.subject_key || 'candidate');
+    setItemSourceId(item.source_id ? String(item.source_id) : '');
+    setItemSourceQuote(item.citations?.[0]?.source_quote || '');
     setIsAddItemModalOpen(true);
   };
 
@@ -297,6 +328,10 @@ export default function ContextPage() {
       return true;
     });
   }, [items, selectedCategory, showActiveOnly, searchQuery]);
+  const importableResumeVersions = useMemo(
+    () => resumeVersions.filter((version) => !['tailored_draft', 'tailored_final', 'legacy_unreviewed'].includes(version.version_kind)),
+    [resumeVersions]
+  );
 
   return (
     <div className="context-page">
@@ -308,7 +343,7 @@ export default function ContextPage() {
           </div>
           <h1 className="context-title">Candidate Context Vault</h1>
           <p className="context-subtitle">
-            Ingest and curate your complete professional context: AI interview transcripts, deep project histories, exact scale metrics, and GitHub repositories. All AI tools in Forma draw upon this verified vault.
+            Ingest professional context, review every extracted claim against its source, and expose only verified evidence to Forma’s AI tools.
           </p>
         </div>
 
@@ -338,11 +373,11 @@ export default function ContextPage() {
       {/* Metrics Banner */}
       <div className="context-stats-grid">
         <div className="stat-card">
-          <div className="stat-label">Active Knowledge Cards</div>
+          <div className="stat-label">Verified Active Cards</div>
           <div className="stat-value">
             {stats ? `${stats.active_items} / ${stats.total_items}` : '0'}
           </div>
-          <div className="stat-hint">Included in AI generations</div>
+          <div className="stat-hint">Eligible for AI generations</div>
         </div>
         <div className="stat-card">
           <div className="stat-label">Raw Sources Ingested</div>
@@ -424,6 +459,10 @@ export default function ContextPage() {
                   setItemTitle('');
                   setItemContent('');
                   setItemTags('');
+                  setItemSubjectType('profile');
+                  setItemSubjectKey('candidate');
+                  setItemSourceId('');
+                  setItemSourceQuote('');
                   setIsAddItemModalOpen(true);
                 }}
               >
@@ -478,10 +517,10 @@ export default function ContextPage() {
                   >
                     <Plus size={15} /> Paste Information Dump
                   </Button>
-                  {resumeVersions.length > 0 && (
+                  {importableResumeVersions.length > 0 && (
                     <Button
                       variant="secondary"
-                      onClick={() => handleImportResume(resumeVersions[0].id)}
+                      onClick={() => handleImportResume((importableResumeVersions.find(v => v.is_current) || importableResumeVersions[0]).id)}
                     >
                       <FileText size={15} /> Import from Active Resume
                     </Button>
@@ -523,8 +562,18 @@ export default function ContextPage() {
                       </button>
                     </div>
 
+                    <div className={`context-verification-status status-${item.verification_status || 'pending'}`}>
+                      {item.verification_status || 'pending'}
+                    </div>
+
                     <h4 className="card-title">{item.title}</h4>
                     <p className="card-content">{item.content}</p>
+                    {item.citations?.[0] && (
+                      <blockquote className="context-source-quote">
+                        <small>{item.citations[0].source_title}</small>
+                        “{item.citations[0].source_quote}”
+                      </blockquote>
+                    )}
 
                     {item.tags && item.tags.length > 0 && (
                       <div className="card-tags">
@@ -546,6 +595,26 @@ export default function ContextPage() {
                         {new Date(item.updated_at).toLocaleDateString()}
                       </span>
                       <div className="card-actions">
+                        {item.verification_status !== 'verified' && item.citations?.length > 0 && (
+                          <button
+                            type="button"
+                            className="action-icon-btn"
+                            onClick={() => handleVerifyItem(item.id, true)}
+                            title={`Verify against: ${item.citations[0].source_quote}`}
+                          >
+                            <CheckCircle2 size={13} />
+                          </button>
+                        )}
+                        {item.verification_status === 'verified' && (
+                          <button
+                            type="button"
+                            className="action-icon-btn"
+                            onClick={() => handleVerifyItem(item.id, false)}
+                            title="Remove verification"
+                          >
+                            <X size={13} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="action-icon-btn"
@@ -583,10 +652,10 @@ export default function ContextPage() {
               </p>
             </div>
             <div className="sources-buttons">
-              {resumeVersions.length > 0 && (
+              {importableResumeVersions.length > 0 && (
                 <Button
                   variant="secondary"
-                  onClick={() => handleImportResume(resumeVersions[0].id)}
+                  onClick={() => handleImportResume((importableResumeVersions.find(v => v.is_current) || importableResumeVersions[0]).id)}
                   title="Import your current CV as a starting source"
                 >
                   <FileText size={15} /> Import Current CV
@@ -839,6 +908,26 @@ export default function ContextPage() {
             />
           </div>
 
+          <div className="form-row">
+            <div className="form-group flex-1">
+              <label className="form-label">Evidence belongs to</label>
+              <select value={itemSubjectType} onChange={(e) => setItemSubjectType(e.target.value)}>
+                <option value="profile">Candidate profile</option>
+                <option value="work_experience">Work experience</option>
+                <option value="projects">Project</option>
+                <option value="research">Research</option>
+              </select>
+            </div>
+            <div className="form-group flex-2">
+              <label className="form-label">Subject key</label>
+              <input
+                value={itemSubjectKey}
+                onChange={(e) => setItemSubjectKey(e.target.value)}
+                placeholder="project name, company|role, or candidate"
+              />
+            </div>
+          </div>
+
           <div className="form-group">
             <label className="form-label">Content (Detailed facts, metrics, outcomes)</label>
             <textarea
@@ -849,6 +938,29 @@ export default function ContextPage() {
               required
             />
           </div>
+
+          {!editingItem && (
+            <>
+              <div className="form-group">
+                <label className="form-label">Supporting source</label>
+                <select value={itemSourceId} onChange={(e) => setItemSourceId(e.target.value)}>
+                  <option value="">No source selected</option>
+                  {sources.map((source) => (
+                    <option key={source.id} value={source.id}>{source.title}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Exact source quote</label>
+                <textarea
+                  rows={3}
+                  value={itemSourceQuote}
+                  onChange={(e) => setItemSourceQuote(e.target.value)}
+                  placeholder="Paste an exact contiguous passage from the selected source"
+                />
+              </div>
+            </>
+          )}
 
           <div className="form-group">
             <label className="form-label">Tags (comma-separated)</label>

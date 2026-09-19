@@ -19,6 +19,7 @@ test('contextApi builds correct URLs and query strings', async () => {
     await contextApi.addSource({ title: 'Dump', content: 'Extensive career notes' });
     await contextApi.listItems({ category: 'achievement_metric', activeOnly: true, query: 'redis' });
     await contextApi.toggleItem(42);
+    await contextApi.verifyItem(42, true);
     await contextApi.preview({ targetRole: 'Staff Engineer', company: 'Acme', maxItems: 15 });
     await contextApi.synthesize('gemini', { replace_existing: false });
     await contextApi.importResume(99);
@@ -35,13 +36,16 @@ test('contextApi builds correct URLs and query strings', async () => {
     assert.equal(requests[3].url, '/api/context/items/42/toggle');
     assert.equal(requests[3].method, 'POST');
 
-    assert.equal(requests[4].url, '/api/context/preview?target_role=Staff+Engineer&company=Acme&max_items=15');
+    assert.equal(requests[4].url, '/api/context/items/42/verify');
+    assert.deepEqual(requests[4].body, { verified: true });
 
-    assert.equal(requests[5].url, '/api/context/gemini/synthesize');
-    assert.equal(requests[5].method, 'POST');
+    assert.equal(requests[5].url, '/api/context/preview?target_role=Staff+Engineer&company=Acme&max_items=15');
 
-    assert.equal(requests[6].url, '/api/context/import-resume/99');
+    assert.equal(requests[6].url, '/api/context/gemini/synthesize');
     assert.equal(requests[6].method, 'POST');
+
+    assert.equal(requests[7].url, '/api/context/import-resume/99');
+    assert.equal(requests[7].method, 'POST');
   } finally {
     globalThis.fetch = originalFetch;
   }

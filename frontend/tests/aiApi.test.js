@@ -6,8 +6,10 @@ import { aiApi, companyResearchApi, coverLetterApi } from '../src/api.js';
 test('AI suggestions use the selected provider route', async () => {
   const originalFetch = globalThis.fetch;
   let requestedUrl;
-  globalThis.fetch = async (url) => {
+  let requestBody;
+  globalThis.fetch = async (url, options) => {
     requestedUrl = url;
+    requestBody = JSON.parse(options.body);
     return new Response(JSON.stringify({ suggestion: 'Improved' }), {
       status: 200,
       headers: { 'content-type': 'application/json' },
@@ -18,9 +20,13 @@ test('AI suggestions use the selected provider route', async () => {
     const result = await aiApi.suggest('chatgpt', {
       section_type: 'about_me',
       current_content: 'Original',
+      resume_version_id: 17,
+      field_path: 'about_me',
     });
     assert.equal(requestedUrl, '/api/ai/chatgpt/suggest');
     assert.equal(result.suggestion, 'Improved');
+    assert.equal(requestBody.resume_version_id, 17);
+    assert.equal(requestBody.field_path, 'about_me');
   } finally {
     globalThis.fetch = originalFetch;
   }

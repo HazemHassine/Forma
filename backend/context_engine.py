@@ -1,7 +1,8 @@
 import json
 import re
+import hashlib
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -85,6 +86,7 @@ def create_source(conn, data: ContextSourceCreate) -> int:
         ),
     )
     source_id = cursor.lastrowid
+    _create_source_revision(conn, source_id, data.content.strip())
     conn.commit()
     return source_id
 
@@ -108,12 +110,73 @@ def update_source(conn, source_id: int, data: ContextSourceUpdate) -> Optional[C
         """,
         (new_title, new_content, new_url, bool(new_active), now, source_id),
     )
+    if data.content is not None and new_content != source.content:
+        _create_source_revision(conn, source_id, new_content)
+        cursor.execute(
+            """
+            UPDATE context_items SET verification_status = 'stale', updated_at = ?
+            WHERE id IN (
+                SELECT c.item_id FROM context_item_citations c
+                JOIN context_source_revisions r ON r.id = c.source_revision_id
+                WHERE r.source_id = ?
+            )
+            """,
+            (now, source_id),
+        )
     conn.commit()
     return get_source(conn, source_id)
 
 
+def _create_source_revision(conn, source_id: int, content: str) -> int:
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO context_source_revisions (source_id, content, content_hash, created_at)
+        VALUES (?, ?, ?, ?)
+        """,
+        (source_id, content, hashlib.sha256(content.encode("utf-8")).hexdigest(), datetime.now().isoformat()),
+    )
+    return cursor.lastrowid
+
+
+def _latest_source_revision(conn, source_id: int):
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT * FROM context_source_revisions WHERE source_id = ? ORDER BY id DESC LIMIT 1",
+        (source_id,),
+    )
+    return cursor.fetchone()
+
+
+def _item_citations(conn, item_id: int) -> list[dict]:
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT c.id, c.source_revision_id, c.source_quote, c.start_offset, c.end_offset,
+               r.source_id, s.title AS source_title
+        FROM context_item_citations c
+        JOIN context_source_revisions r ON r.id = c.source_revision_id
+        JOIN context_sources s ON s.id = r.source_id
+        WHERE c.item_id = ? ORDER BY c.id
+        """,
+        (item_id,),
+    )
+    return [dict(row) for row in cursor.fetchall()]
+
+
 def delete_source(conn, source_id: int) -> bool:
     cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE context_items SET verification_status = 'stale', updated_at = ?
+        WHERE id IN (
+            SELECT c.item_id FROM context_item_citations c
+            JOIN context_source_revisions r ON r.id = c.source_revision_id
+            WHERE r.source_id = ?
+        )
+        """,
+        (datetime.now().isoformat(), source_id),
+    )
     cursor.execute("DELETE FROM context_sources WHERE id = ?", (source_id,))
     deleted = cursor.rowcount > 0 if hasattr(cursor, "rowcount") and cursor.rowcount is not None else True
     conn.commit()
@@ -160,6 +223,11 @@ def list_items(
                 content=r["content"],
                 tags=tags if isinstance(tags, list) else [],
                 is_active=bool(r["is_active"]),
+                verification_status=r["verification_status"],
+                origin=r["origin"],
+                subject_type=r["subject_type"],
+                subject_key=r["subject_key"],
+                citations=_item_citations(conn, r["id"]),
                 created_at=str(r["created_at"]),
                 updated_at=str(r["updated_at"]),
             )
@@ -187,6 +255,11 @@ def get_item(conn, item_id: int) -> Optional[ContextItem]:
         content=r["content"],
         tags=tags if isinstance(tags, list) else [],
         is_active=bool(r["is_active"]),
+        verification_status=r["verification_status"],
+        origin=r["origin"],
+        subject_type=r["subject_type"],
+        subject_key=r["subject_key"],
+        citations=_item_citations(conn, r["id"]),
         created_at=str(r["created_at"]),
         updated_at=str(r["updated_at"]),
     )
@@ -195,10 +268,20 @@ def get_item(conn, item_id: int) -> Optional[ContextItem]:
 def create_item(conn, data: ContextItemCreate) -> int:
     cursor = conn.cursor()
     now = datetime.now().isoformat()
+    citation_source = get_source(conn, data.source_id) if data.source_id else None
+    citation_revision = _latest_source_revision(conn, data.source_id) if data.source_id else None
+    citation_quote = (data.source_quote or data.content).strip() if data.source_id else ""
+    citation_start = citation_source.content.find(citation_quote) if citation_source else -1
+    if data.source_id and (
+        not citation_source or not citation_revision or not citation_quote or citation_start < 0
+    ):
+        raise ValueError("The citation must be an exact contiguous quote from the selected source.")
     cursor.execute(
         """
-        INSERT INTO context_items (source_id, category, title, content, tags, is_active, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO context_items (
+            source_id, category, title, content, tags, is_active, created_at, updated_at,
+            verification_status, origin, subject_type, subject_key
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             data.source_id,
@@ -209,9 +292,25 @@ def create_item(conn, data: ContextItemCreate) -> int:
             bool(data.is_active),
             now,
             now,
+            "pending",
+            "manual",
+            data.subject_type,
+            data.subject_key,
         ),
     )
     item_id = cursor.lastrowid
+    if data.source_id:
+        cursor.execute(
+            """
+            INSERT INTO context_item_citations (
+                item_id, source_revision_id, source_quote, start_offset, end_offset
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                item_id, citation_revision["id"], citation_quote, citation_start,
+                citation_start + len(citation_quote),
+            ),
+        )
     conn.commit()
     return item_id
 
@@ -226,12 +325,15 @@ def update_item(conn, item_id: int, data: ContextItemUpdate) -> Optional[Context
     new_content = data.content.strip() if data.content is not None else item.content
     new_tags = data.tags if data.tags is not None else item.tags
     new_active = data.is_active if data.is_active is not None else item.is_active
+    new_subject_type = data.subject_type if data.subject_type is not None else item.subject_type
+    new_subject_key = data.subject_key if data.subject_key is not None else item.subject_key
 
     cursor = conn.cursor()
     cursor.execute(
         """
         UPDATE context_items
-        SET category = ?, title = ?, content = ?, tags = ?, is_active = ?, updated_at = ?
+        SET category = ?, title = ?, content = ?, tags = ?, is_active = ?,
+            verification_status = 'pending', subject_type = ?, subject_key = ?, updated_at = ?
         WHERE id = ?
         """,
         (
@@ -240,9 +342,48 @@ def update_item(conn, item_id: int, data: ContextItemUpdate) -> Optional[Context
             new_content,
             json.dumps(new_tags or []),
             bool(new_active),
+            new_subject_type,
+            new_subject_key,
             now,
             item_id,
         ),
+    )
+    if data.content is not None:
+        cursor.execute("DELETE FROM context_item_citations WHERE item_id = ?", (item_id,))
+        if item.source_id:
+            source = get_source(conn, item.source_id)
+            revision = _latest_source_revision(conn, item.source_id)
+            start_offset = source.content.find(new_content) if source else -1
+            if source and revision and start_offset >= 0:
+                cursor.execute(
+                    """
+                    INSERT INTO context_item_citations (
+                        item_id, source_revision_id, source_quote, start_offset, end_offset
+                    ) VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (item_id, revision["id"], new_content, start_offset, start_offset + len(new_content)),
+                )
+    conn.commit()
+    return get_item(conn, item_id)
+
+
+def set_item_verification(conn, item_id: int, verified: bool) -> Optional[ContextItem]:
+    item = get_item(conn, item_id)
+    if not item:
+        return None
+    if verified and not item.citations:
+        raise ValueError("A knowledge card needs an exact source citation before it can be verified.")
+    if verified:
+        for citation in item.citations:
+            latest = _latest_source_revision(conn, citation["source_id"])
+            if not latest or latest["id"] != citation["source_revision_id"]:
+                raise ValueError("This card cites an outdated source revision and must be reviewed again.")
+            if citation["source_quote"] not in latest["content"]:
+                raise ValueError("The cited quote no longer exists in the current source revision.")
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE context_items SET verification_status = ?, updated_at = ? WHERE id = ?",
+        ("verified" if verified else "rejected", datetime.now().isoformat(), item_id),
     )
     conn.commit()
     return get_item(conn, item_id)
@@ -355,7 +496,11 @@ def get_stats(conn) -> ContextStats:
     sources_count = cursor.fetchone()["count"]
 
     cursor.execute(
-        "SELECT COUNT(*) AS total, SUM(CASE WHEN is_active = ? THEN 1 ELSE 0 END) AS active FROM context_items",
+        """
+        SELECT COUNT(*) AS total,
+               SUM(CASE WHEN is_active = ? AND verification_status = 'verified' THEN 1 ELSE 0 END) AS active
+        FROM context_items
+        """,
         (True,),
     )
     item_counts = cursor.fetchone()
@@ -366,7 +511,10 @@ def get_stats(conn) -> ContextStats:
     category_rows = cursor.fetchall()
     categories_breakdown = {r["category"]: r["count"] for r in category_rows}
 
-    cursor.execute("SELECT title, content FROM context_items WHERE is_active = ?", (True,))
+    cursor.execute(
+        "SELECT title, content FROM context_items WHERE is_active = ? AND verification_status = 'verified'",
+        (True,),
+    )
     active_rows = cursor.fetchall()
     total_chars = sum(len(r["title"] or "") + len(r["content"] or "") for r in active_rows)
     profile = get_profile(conn)
@@ -407,6 +555,13 @@ OBJECTIVES:
    - "title": Concise, highly descriptive label (e.g. "Distributed Stream Processing Pipeline", "Zero-Downtime Database Migration").
    - "content": 2-4 dense sentences explaining the context, challenge, exact technologies, and measurable results.
    - "tags": 2-6 lower-case keywords (e.g. ["python", "kafka", "distributed-systems", "performance"]).
+   - "source_id": the numeric ID of the one source that directly supports the card.
+   - "source_quote": an exact, contiguous quotation copied from that source. Do not
+     normalize, paraphrase, join separate passages, or cite a URL as proof.
+   - "subject_type" and "subject_key": identify the exact job, project, research item,
+     credential, or candidate-level profile to which the fact belongs. Use subject_type
+     "work_experience" with "company|role", "projects" with the project name,
+     "research" with the research title, or "profile" with "candidate". Lowercase keys.
 4. Formulate a comprehensive 3-4 sentence "profile_summary" capturing the candidate's holistic edge, a list of 3-5 "key_differentiators", and 2-4 "target_roles".
 
 Be truthful: never invent claims not present in the supplied source materials.
@@ -443,12 +598,19 @@ DISTILLATION_OUTPUT_SCHEMA = {
                     },
                     "title": {"type": "string"},
                     "content": {"type": "string"},
+                    "source_id": {"type": "integer"},
+                    "source_quote": {"type": "string"},
+                    "subject_type": {"type": "string"},
+                    "subject_key": {"type": "string"},
                     "tags": {
                         "type": "array",
                         "items": {"type": "string"},
                     },
                 },
-                "required": ["category", "title", "content", "tags"],
+                "required": [
+                    "category", "title", "content", "tags", "source_id",
+                    "source_quote", "subject_type", "subject_key",
+                ],
             },
         },
     },
@@ -471,7 +633,7 @@ def synthesize_context(
 
     source_blocks = []
     for i, s in enumerate(sources, 1):
-        block = f"--- SOURCE {i}: {s.title} ({s.source_type.upper()}) ---\n"
+        block = f"--- SOURCE {i} [source_id={s.id}]: {s.title} ({s.source_type.upper()}) ---\n"
         if s.url:
             block += f"URL: {s.url}\n"
         block += f"CONTENT:\n{s.content}\n"
@@ -516,15 +678,38 @@ def synthesize_context(
         title = itm.get("title", "").strip()
         content = itm.get("content", "").strip()
         tags = itm.get("tags", [])
-        if not title or not content:
+        source_id = itm.get("source_id")
+        source_quote = str(itm.get("source_quote", "")).strip()
+        source = next((s for s in sources if s.id == source_id), None)
+        if not title or not content or not source or not source_quote:
+            continue
+        start_offset = source.content.find(source_quote)
+        if start_offset < 0:
             continue
 
         cursor.execute(
             """
-            INSERT INTO context_items (source_id, category, title, content, tags, is_active, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO context_items (
+                source_id, category, title, content, tags, is_active, created_at, updated_at,
+                verification_status, origin, subject_type, subject_key
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (None, cat, title, content, json.dumps(tags), True, now, now),
+            (
+                source_id, cat, title, content, json.dumps(tags), True, now, now,
+                "pending", "distilled", itm.get("subject_type") or None,
+                itm.get("subject_key") or None,
+            ),
+        )
+        item_id = cursor.lastrowid
+        revision = _latest_source_revision(conn, source_id)
+        revision_id = revision["id"] if revision else _create_source_revision(conn, source_id, source.content)
+        cursor.execute(
+            """
+            INSERT INTO context_item_citations (
+                item_id, source_revision_id, source_quote, start_offset, end_offset
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            (item_id, revision_id, source_quote, start_offset, start_offset + len(source_quote)),
         )
         inserted_count += 1
         categories_breakdown[cat] = categories_breakdown.get(cat, 0) + 1
@@ -610,8 +795,12 @@ def assemble_context(
     max_items: int = 15,
 ) -> str:
     """Intelligently assemble relevant candidate context into a bounded markdown block."""
-    items = list_items(conn, active_only=True)
-    profile = get_profile(conn)
+    items = [
+        item for item in list_items(conn, active_only=True)
+        if item.verification_status == "verified"
+    ]
+    # Synthesized profiles help navigation, but are never factual evidence.
+    profile = None
 
     if not items and not profile:
         return ""
@@ -659,7 +848,7 @@ def assemble_context(
         else:
             categorized.setdefault("experience_project", []).append(itm)
 
-    lines = ["=== CANDIDATE VERIFIED CONTEXT VAULT (AUTHENTIC BACKGROUND DATA) ==="]
+    lines = ["=== VERIFIED CANDIDATE EVIDENCE ==="]
 
     if profile and profile.summary:
         lines.append(f"EXECUTIVE SUMMARY & POSITIONING:\n{profile.summary}")
@@ -669,35 +858,61 @@ def assemble_context(
     if categorized["profile_persona"]:
         lines.append("\nPERSONA & WORKING PRINCIPLES:")
         for itm in categorized["profile_persona"]:
-            lines.append(f"- **{itm.title}**: {itm.content}")
+            lines.append(f"- [vault:{itm.id}] **{itm.title}**: {itm.content}")
 
     if categorized["achievement_metric"]:
         lines.append("\nKEY VERIFIED ACHIEVEMENTS & SCALE METRICS:")
         for itm in categorized["achievement_metric"]:
             tags_str = f" [tags: {', '.join(itm.tags)}]" if itm.tags else ""
-            lines.append(f"- **{itm.title}**: {itm.content}{tags_str}")
+            lines.append(f"- [vault:{itm.id}] **{itm.title}**: {itm.content}{tags_str}")
 
     if categorized["experience_project"]:
         lines.append("\nDEEP TECHNICAL WORK & UNLISTED PROJECTS:")
         for itm in categorized["experience_project"]:
             tags_str = f" [tech: {', '.join(itm.tags)}]" if itm.tags else ""
-            lines.append(f"- **{itm.title}**: {itm.content}{tags_str}")
+            lines.append(f"- [vault:{itm.id}] **{itm.title}**: {itm.content}{tags_str}")
 
     if categorized["skills_arsenal"]:
         lines.append("\nTECHNICAL ARSENAL & PRACTICAL PROFICIENCIES:")
         for itm in categorized["skills_arsenal"]:
-            lines.append(f"- **{itm.title}**: {itm.content}")
+            lines.append(f"- [vault:{itm.id}] **{itm.title}**: {itm.content}")
 
     if categorized["proof_link"]:
         lines.append("\nPORTFOLIO, REPOSITORIES & REPUTATION LINKS:")
         for itm in categorized["proof_link"]:
-            lines.append(f"- **{itm.title}**: {itm.content}")
+            lines.append(f"- [vault:{itm.id}] **{itm.title}**: {itm.content}")
 
     if categorized["education_credential"]:
         lines.append("\nCREDENTIALS & DEEP SPECIALIZATIONS:")
         for itm in categorized["education_credential"]:
-            lines.append(f"- **{itm.title}**: {itm.content}")
+            lines.append(f"- [vault:{itm.id}] **{itm.title}**: {itm.content}")
 
     lines.append("=== END CANDIDATE CONTEXT VAULT ===\n")
 
     return "\n".join(lines)
+
+
+def assemble_evidence(
+    conn,
+    target_role: Optional[str] = None,
+    job_description: Optional[str] = None,
+    company: Optional[str] = None,
+    max_items: int = 15,
+) -> list[dict]:
+    """Return verified vault assertions with stable IDs and source provenance."""
+    query_tokens = _tokenize(" ".join(filter(None, [target_role, job_description, company])))
+    items = [
+        item for item in list_items(conn, active_only=True)
+        if item.verification_status == "verified" and item.citations
+    ]
+    items.sort(key=lambda item: _score_item(item, query_tokens), reverse=True)
+    return [
+        {
+            "id": f"vault:{item.id}",
+            "text": item.content,
+            "subject_type": item.subject_type,
+            "subject_key": item.subject_key,
+            "citations": item.citations,
+        }
+        for item in items[:max_items]
+    ]

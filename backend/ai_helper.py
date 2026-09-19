@@ -1,4 +1,3 @@
-import copy
 import os
 import json
 from typing import Any, TypedDict
@@ -8,6 +7,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from langgraph.graph import END, START, StateGraph
+from factual_integrity import build_resume_evidence, validate_resume_edits
 
 # Resolve the backend environment file independently of the directory uvicorn
 # or Docker was started from. An empty injected variable should not mask the
@@ -76,6 +76,13 @@ NON-NEGOTIABLE RULES:
 - Preserve every fact. Candidate facts may come from either the SOURCE RESUME or the verified CANDIDATE CONTEXT VAULT. Never invent or infer experience, tools, metrics, responsibilities, proficiency, or outcomes absent from both.
 - When CANDIDATE CONTEXT VAULT is provided, actively draw upon its verified achievements, scale metrics, and technical accomplishments to enrich weak resume bullets or tailor the profile.
 - Report any vault items you used in 'context_evidence_used'.
+- Every changed field must appear in 'claim_evidence' with its exact field path and
+  the stable evidence IDs that support the complete proposed text. Evidence IDs
+  are references, not suggestions; never cite an item belonging to another job,
+  project, or research entry.
+- Field paths use zero-based indexes, for example 'about_me',
+  'work_experience.0.bullets.1', 'projects.0.description',
+  'projects.0.bullets.0', and 'research.0.description'.
 - Never add a job-description keyword unless supported by the resume or context vault.
 - Keep the exact number and order of work, project, education, research, skill, certificate, and language entries. Identity and ordering must remain stable for safe review.
 - Do not modify personal_info, education, skills, certificates, languages, references, names, employers, titles, dates, locations, project stacks, or research focus.
@@ -97,7 +104,8 @@ Return ONLY valid JSON with this exact top-level structure:
   "strengths": [<up to 4 evidence-backed matches>],
   "gaps": [<up to 4 important requirements not evidenced in the resume>],
   "keywords_used": [<up to 10 job-description terms actually supported and used>],
-  "context_evidence_used": [<up to 5 specific facts or metrics incorporated from the context vault>]
+  "context_evidence_used": [<up to 5 specific facts or metrics incorporated from the context vault>],
+  "claim_evidence": [{{"field_path": <exact changed field path>, "evidence_ids": [<stable IDs>]}}]
 }}
 No markdown, code fences, commentary, or additional keys.
 """
@@ -256,6 +264,7 @@ def optimize_resume(
     company: str = None,
     instructions: str = None,
     context_data: str = None,
+    context_evidence: list[dict] = None,
     provider: str = "gemini",
 ) -> dict:
     """Optimize a resume with the selected AI provider."""
@@ -264,11 +273,14 @@ def optimize_resume(
         "company": company or "Not provided",
         "user_instructions": instructions or "No additional instructions",
     }
+    evidence_catalog = build_resume_evidence(resume_data) + list(context_evidence or [])
     user_parts = [
         "TAILORING CONTEXT:\n"
         f"{json.dumps(context, indent=2)}",
         "SOURCE RESUME:\n"
         f"{json.dumps(resume_data, indent=2)}",
+        "AUTHORIZED EVIDENCE CATALOG:\n"
+        f"{json.dumps(evidence_catalog, indent=2)}",
     ]
     if context_data and context_data.strip():
         user_parts.append(
@@ -335,6 +347,18 @@ def optimize_resume(
             "gaps": {"type": "array", "items": {"type": "string"}},
             "keywords_used": {"type": "array", "items": {"type": "string"}},
             "context_evidence_used": {"type": "array", "items": {"type": "string"}},
+            "claim_evidence": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "field_path": {"type": "string"},
+                        "evidence_ids": {"type": "array", "items": {"type": "string"}},
+                    },
+                    "required": ["field_path", "evidence_ids"],
+                },
+            },
         },
         "required": [
             "resume",
@@ -342,6 +366,7 @@ def optimize_resume(
             "strengths",
             "gaps",
             "keywords_used",
+            "claim_evidence",
         ],
     }
     state = AI_GRAPH.invoke(
@@ -362,48 +387,16 @@ def optimize_resume(
 
     optimized.setdefault("context_evidence_used", [])
 
-    # Start with a deep copy of the source resume data so all fields, structure,
-    # and unedited sections remain completely intact and valid.
-    final_resume = copy.deepcopy(resume_data)
     model_resume = optimized.get("resume") or {}
-
-    # 1. Tailor about_me if provided by the model
-    if model_resume.get("about_me"):
-        final_resume["about_me"] = str(model_resume["about_me"]).strip()
-
-    # 2. Update work_experience bullets while strictly preserving company, location, role, dates
-    original_work = resume_data.get("work_experience", [])
-    model_work = model_resume.get("work_experience", [])
-    if isinstance(model_work, list):
-        for index, original in enumerate(original_work):
-            if index < len(model_work) and isinstance(model_work[index], dict):
-                candidate = model_work[index]
-                bullets = candidate.get("bullets")
-                if isinstance(bullets, list) and len(bullets) == len(original.get("bullets", [])):
-                    final_resume["work_experience"][index]["bullets"] = [str(b).strip() for b in bullets]
-
-    # 3. Update projects description and bullets while preserving name, type, stack, extra_info
-    original_projects = resume_data.get("projects", [])
-    model_projects = model_resume.get("projects", [])
-    if isinstance(model_projects, list):
-        for index, original in enumerate(original_projects):
-            if index < len(model_projects) and isinstance(model_projects[index], dict):
-                candidate = model_projects[index]
-                if candidate.get("description"):
-                    final_resume["projects"][index]["description"] = str(candidate["description"]).strip()
-                bullets = candidate.get("bullets")
-                if isinstance(bullets, list) and len(bullets) == len(original.get("bullets", [])):
-                    final_resume["projects"][index]["bullets"] = [str(b).strip() for b in bullets]
-
-    # 4. Update research description while preserving title, institution, location, date, focus
-    original_research = resume_data.get("research", [])
-    model_research = model_resume.get("research", [])
-    if isinstance(model_research, list):
-        for index, original in enumerate(original_research):
-            if index < len(model_research) and isinstance(model_research[index], dict):
-                candidate = model_research[index]
-                if candidate.get("description"):
-                    final_resume["research"][index]["description"] = str(candidate["description"]).strip()
-
+    claim_evidence = {
+        item.get("field_path"): item.get("evidence_ids", [])
+        for item in optimized.get("claim_evidence", [])
+        if isinstance(item, dict) and item.get("field_path")
+    }
+    final_resume, audit, blocked = validate_resume_edits(
+        resume_data, model_resume, claim_evidence, context_evidence or []
+    )
     optimized["resume"] = final_resume
+    optimized["claim_audit"] = audit
+    optimized["blocked_edits"] = blocked
     return optimized

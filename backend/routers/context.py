@@ -16,6 +16,7 @@ from models import (
     ContextStats,
     ContextSynthesizeRequest,
     ContextSynthesizeResponse,
+    ContextVerificationRequest,
 )
 import context_engine
 
@@ -122,6 +123,8 @@ def add_item(data: ContextItemCreate):
         if not created:
             raise HTTPException(status_code=500, detail="Failed to retrieve created item")
         return created
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     finally:
         conn.close()
 
@@ -161,6 +164,21 @@ def toggle_item_active(item_id: int):
         if not toggled:
             raise HTTPException(status_code=404, detail="Item not found")
         return toggled
+    finally:
+        conn.close()
+
+
+@router.post("/items/{item_id}/verify", response_model=ContextItem)
+def verify_item(item_id: int, request: ContextVerificationRequest):
+    """Approve or reject a cited knowledge card for use as factual evidence."""
+    conn = get_db()
+    try:
+        item = context_engine.set_item_verification(conn, item_id, request.verified)
+        if not item:
+            raise HTTPException(status_code=404, detail="Item not found")
+        return item
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     finally:
         conn.close()
 
@@ -243,7 +261,13 @@ def preview_assembled_context(
             max_items=max_items,
         )
         tokens = max(1, len(prompt) // 4) if prompt else 0
-        active_items = context_engine.list_items(conn, active_only=True)
+        active_items = context_engine.assemble_evidence(
+            conn,
+            target_role=target_role,
+            job_description=job_description,
+            company=company,
+            max_items=max_items,
+        )
         return ContextPreviewResponse(
             assembled_prompt=prompt,
             item_count=len(active_items),
@@ -259,10 +283,18 @@ def import_from_resume(resume_version_id: int):
     conn = get_db()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT name, data FROM resume_versions WHERE id = ?", (resume_version_id,))
+        cursor.execute(
+            "SELECT name, data, version_kind FROM resume_versions WHERE id = ?",
+            (resume_version_id,),
+        )
         row = cursor.fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="Resume version not found")
+        if row["version_kind"] in {"tailored_draft", "tailored_final", "legacy_unreviewed"}:
+            raise HTTPException(
+                status_code=409,
+                detail="Generated resume versions cannot be imported as factual evidence.",
+            )
 
         resume_json = row["data"]
         try:

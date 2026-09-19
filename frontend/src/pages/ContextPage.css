@@ -754,3 +754,37 @@
   overflow-y: auto;
   font-family: monospace;
 }
+.context-verification-status {
+  display: inline-flex;
+  width: fit-content;
+  margin: 0 0 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: var(--bg-subtle, #f3f4f6);
+}
+
+.context-verification-status.status-verified { color: #047857; background: #ecfdf5; }
+.context-verification-status.status-rejected { color: #b91c1c; background: #fef2f2; }
+.context-verification-status.status-stale { color: #b45309; background: #fffbeb; }
+
+.context-source-quote {
+  margin: 8px 0 12px;
+  padding: 9px 11px;
+  border-left: 3px solid var(--border-default);
+  background: var(--bg-subtle, #f8fafc);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.context-source-quote small {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
