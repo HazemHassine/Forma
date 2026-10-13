@@ -17,6 +17,7 @@ import {
   Trash2,
   GripVertical,
   RotateCcw,
+  Scissors,
 } from 'lucide-react';
 import { photoApi } from '../api';
 import { useToast } from '../App';
@@ -223,6 +224,34 @@ export default function ResumeEditor({ data, onChange }) {
     }
   };
 
+  const pageBreaks = Array.isArray(data.page_breaks) ? data.page_breaks : [];
+
+  const togglePageBreak = (sectionId) => {
+    const hasBreak = pageBreaks.includes(sectionId);
+    const nextBreaks = hasBreak
+      ? pageBreaks.filter(id => id !== sectionId)
+      : [...pageBreaks, sectionId];
+    onChange({ ...data, page_breaks: nextBreaks });
+    addToast(
+      hasBreak
+        ? `Removed page break before ${SECTION_METADATA[sectionId]?.title || 'section'}`
+        : `Added page break before ${SECTION_METADATA[sectionId]?.title || 'section'}`,
+      hasBreak ? 'info' : 'success'
+    );
+  };
+
+  const addPageBreak = (sectionId) => {
+    if (pageBreaks.includes(sectionId)) return;
+    onChange({ ...data, page_breaks: [...pageBreaks, sectionId] });
+    addToast(`Added page break before ${SECTION_METADATA[sectionId]?.title || 'section'}`, 'success');
+  };
+
+  const removePageBreak = (sectionId) => {
+    const nextBreaks = pageBreaks.filter(id => id !== sectionId);
+    onChange({ ...data, page_breaks: nextBreaks });
+    addToast(`Removed page break before ${SECTION_METADATA[sectionId]?.title || 'section'}`, 'info');
+  };
+
   const moveSection = (fromIndex, delta) => {
     const targetIndex = fromIndex + delta;
     if (targetIndex < 0 || targetIndex >= currentSectionOrder.length) return;
@@ -234,7 +263,8 @@ export default function ResumeEditor({ data, onChange }) {
 
   const removeSection = (sectionId) => {
     const nextOrder = currentSectionOrder.filter(id => id !== sectionId);
-    onChange({ ...data, section_order: nextOrder });
+    const nextBreaks = pageBreaks.filter(id => id !== sectionId);
+    onChange({ ...data, section_order: nextOrder, page_breaks: nextBreaks });
     addToast(`Removed ${SECTION_METADATA[sectionId]?.title || 'section'}. You can restore it anytime with "+ Add Section".`, 'info');
   };
 
@@ -843,8 +873,19 @@ export default function ResumeEditor({ data, onChange }) {
         const isDragging = draggedIndex === index;
         const isDragOver = dragOverIndex === index && draggedIndex !== index;
 
+        const hasBreak = pageBreaks.includes(sectionId);
+
         const sectionActions = (
           <>
+            <button
+              type="button"
+              className={`editor-section-action-btn ${hasBreak ? 'page-break-active' : ''}`}
+              title={hasBreak ? `Remove page break before ${meta.title}` : `Add page break before ${meta.title}`}
+              aria-label={hasBreak ? `Remove page break before ${meta.title}` : `Add page break before ${meta.title}`}
+              onClick={() => togglePageBreak(sectionId)}
+            >
+              <Scissors size={13} />
+            </button>
             <button
               type="button"
               className="editor-section-action-btn"
@@ -882,22 +923,55 @@ export default function ResumeEditor({ data, onChange }) {
         );
 
         return (
-          <Section
-            key={sectionId}
-            title={meta.title}
-            icon={meta.icon}
-            draggable={true}
-            isDragging={isDragging}
-            isDragOver={isDragOver}
-            onDragStart={e => handleDragStart(e, index)}
-            onDragOver={e => handleDragOver(e, index)}
-            onDragLeave={handleDragLeave}
-            onDrop={e => handleDrop(e, index)}
-            onDragEnd={handleDragEnd}
-            actions={sectionActions}
-          >
-            {renderSectionContent(sectionId)}
-          </Section>
+          <div key={sectionId} className="editor-section-wrapper">
+            {hasBreak ? (
+              <div className="editor-page-break-indicator" role="region" aria-label={`Page break before ${meta.title}`}>
+                <div className="editor-page-break-line" />
+                <div className="editor-page-break-badge">
+                  <Scissors size={12} className="page-break-badge-icon" />
+                  <span>Page Break</span>
+                  <button
+                    type="button"
+                    className="editor-page-break-remove-btn"
+                    title={`Remove page break before ${meta.title}`}
+                    aria-label={`Remove page break before ${meta.title}`}
+                    onClick={() => removePageBreak(sectionId)}
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                <div className="editor-page-break-line" />
+              </div>
+            ) : (
+              <div className="editor-page-break-inserter">
+                <button
+                  type="button"
+                  className="editor-page-break-insert-btn"
+                  title={`Insert page break before ${meta.title}`}
+                  aria-label={`Insert page break before ${meta.title}`}
+                  onClick={() => addPageBreak(sectionId)}
+                >
+                  <Scissors size={11} />
+                  <span>+ Page Break</span>
+                </button>
+              </div>
+            )}
+            <Section
+              title={meta.title}
+              icon={meta.icon}
+              draggable={true}
+              isDragging={isDragging}
+              isDragOver={isDragOver}
+              onDragStart={e => handleDragStart(e, index)}
+              onDragOver={e => handleDragOver(e, index)}
+              onDragLeave={handleDragLeave}
+              onDrop={e => handleDrop(e, index)}
+              onDragEnd={handleDragEnd}
+              actions={sectionActions}
+            >
+              {renderSectionContent(sectionId)}
+            </Section>
+          </div>
         );
       })}
 

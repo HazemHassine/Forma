@@ -77,6 +77,7 @@
     .compact { margin: 0 0 2.5pt; }
     body.font-classic, body.font-classic * { font-family: Georgia, 'Times New Roman', serif !important; }
     body.font-modern, body.font-modern * { font-family: 'Liberation Sans', Arial, Helvetica, sans-serif !important; }
+    .page-break { page-break-before: always; break-before: page; }
   </style>
 </head>
 <body class="font-{{ resume.font_family | default('classic', true) }}">
@@ -170,6 +171,7 @@
   {% endmacro %}
 
   {% for s in section_order %}
+    {% if page_breaks and s in page_breaks %}<div class="page-break"></div>{% endif %}
     {% if s == 'about_me' %}{{ render_about_me() }}
     {% elif s == 'work_experience' %}{{ render_work_experience() }}
     {% elif s == 'education' %}{{ render_education() }}

@@ -776,3 +776,120 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Page Break Controls Between Sections */
+.editor-section-wrapper {
+  position: relative;
+}
+
+.editor-page-break-inserter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 14px;
+  margin: -5px 0 5px;
+  position: relative;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 5;
+}
+
+.editor-page-break-inserter:hover,
+.editor-page-break-inserter:focus-within {
+  opacity: 1;
+}
+
+.editor-page-break-inserter::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 50%;
+  height: 1px;
+  border-top: 1px dashed #cbd5e1;
+  z-index: 1;
+}
+
+.editor-page-break-insert-btn {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.editor-page-break-insert-btn:hover {
+  color: #1d4ed8;
+  border-color: #93c5fd;
+  background: #eff6ff;
+  transform: scale(1.03);
+}
+
+/* Active Page Break Indicator */
+.editor-page-break-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 4px 8px;
+  user-select: none;
+}
+
+.editor-page-break-line {
+  flex: 1;
+  height: 1px;
+  border-top: 1.5px dashed #3b82f6;
+  opacity: 0.65;
+}
+
+.editor-page-break-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.08);
+}
+
+.page-break-badge-icon {
+  color: #2563eb;
+}
+
+.editor-page-break-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 1px;
+  margin-left: 2px;
+  color: #64748b;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.editor-page-break-remove-btn:hover {
+  background: #dbeafe;
+  color: #dc2626;
+}
+
+.editor-section-action-btn.page-break-active {
+  color: #1d4ed8;
+  background: #eff6ff;
+  border-color: #93c5fd;
+}

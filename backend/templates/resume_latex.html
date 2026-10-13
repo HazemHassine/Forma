@@ -63,6 +63,7 @@
     .references-inline { margin: 1pt 0 0; font-size: 8.2pt; }
     body.font-clean, body.font-clean * { font-family: Arial, Helvetica, sans-serif !important; }
     body.font-modern, body.font-modern * { font-family: 'Liberation Sans', Arial, Helvetica, sans-serif !important; }
+    .page-break { page-break-before: always; break-before: page; }
   </style>
 </head>
 <body class="font-{{ resume.font_family | default('classic', true) }}">
@@ -166,6 +167,7 @@
   {% endmacro %}
 
   {% for s in section_order %}
+    {% if page_breaks and s in page_breaks %}<div class="page-break"></div>{% endif %}
     {% if s == 'about_me' %}{{ render_about_me() }}
     {% elif s == 'education' %}{{ render_education() }}
     {% elif s == 'work_experience' %}{{ render_work_experience() }}

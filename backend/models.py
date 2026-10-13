@@ -110,6 +110,7 @@ class ResumeData(BaseModel):
     references: str = "Available upon request"
     section_order: Optional[list[str]] = None
     font_family: ResumeFont = ResumeFont.classic
+    page_breaks: Optional[list[str]] = None
 
 
 class ResumeVersionCreate(BaseModel):

@@ -49,3 +49,34 @@ test('reordering sections moves section to desired index', () => {
   assert.equal(order[1], 'about_me');
   assert.equal(order.length, 9);
 });
+
+test('toggling and managing page breaks between sections', () => {
+  let pageBreaks = [];
+
+  // Add page break before education
+  const addBreak = (sectionId) => {
+    if (!pageBreaks.includes(sectionId)) pageBreaks = [...pageBreaks, sectionId];
+  };
+  const removeBreak = (sectionId) => {
+    pageBreaks = pageBreaks.filter(id => id !== sectionId);
+  };
+  const toggleBreak = (sectionId) => {
+    pageBreaks = pageBreaks.includes(sectionId)
+      ? pageBreaks.filter(id => id !== sectionId)
+      : [...pageBreaks, sectionId];
+  };
+
+  addBreak('education');
+  assert.deepEqual(pageBreaks, ['education']);
+
+  toggleBreak('education');
+  assert.deepEqual(pageBreaks, []);
+
+  toggleBreak('skills');
+  assert.deepEqual(pageBreaks, ['skills']);
+
+  // Removing a section also cleans up its page break
+  const removedSection = 'skills';
+  pageBreaks = pageBreaks.filter(id => id !== removedSection);
+  assert.deepEqual(pageBreaks, []);
+});

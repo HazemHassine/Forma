@@ -419,6 +419,11 @@
         /* Font choices are intentionally limited to print-safe, readable families. */
         body.font-clean, body.font-clean * { font-family: Arial, Helvetica, sans-serif !important; }
         body.font-modern, body.font-modern * { font-family: 'Liberation Sans', Arial, Helvetica, sans-serif !important; }
+
+        .page-break {
+            page-break-before: always;
+            break-before: page;
+        }
     </style>
 </head>
 <body class="template-{{ template_id }} font-{{ resume.font_family | default('classic', true) }}">
@@ -573,6 +578,7 @@
             <td class="content-left">
                 {% for s in section_order if s in ['about_me', 'education', 'work_experience', 'projects', 'research'] and resume[s] %}
                     {% set is_first = loop.first %}
+                    {% if page_breaks and s in page_breaks %}<div class="page-break"></div>{% endif %}
                     {% if s == 'about_me' %}{{ render_about_me(is_first) }}
                     {% elif s == 'education' %}{{ render_education(is_first) }}
                     {% elif s == 'work_experience' %}{{ render_work_experience(is_first) }}
@@ -585,6 +591,7 @@
             <td class="content-right">
                 {% for s in section_order if s in ['skills', 'languages', 'certificates', 'references'] and resume[s] %}
                     {% set is_first = loop.first %}
+                    {% if page_breaks and s in page_breaks %}<div class="page-break"></div>{% endif %}
                     {% if s == 'skills' %}{{ render_skills(is_first) }}
                     {% elif s == 'languages' %}{{ render_languages(is_first) }}
                     {% elif s == 'certificates' %}{{ render_certificates(is_first) }}

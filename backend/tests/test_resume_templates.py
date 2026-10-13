@@ -259,6 +259,55 @@ class ResumeTemplateTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIn("janedev.com", text)
                 self.assertIn("portfolio.janedev.com", text)
 
+    def test_page_breaks_between_sections_in_pdf(self):
+        resume = {
+            "personal_info": {
+                "name": "Jane Developer",
+                "title": "Senior Engineer",
+                "email": "jane@example.com",
+            },
+            "about_me": "Summary text here.",
+            "work_experience": [
+                {
+                    "company": "Company A",
+                    "location": "City",
+                    "role": "Role A",
+                    "dates": "2020 - Present",
+                    "bullets": ["Bullet 1"],
+                }
+            ],
+            "education": [
+                {
+                    "institution": "University B",
+                    "location": "City",
+                    "degree": "Degree B",
+                    "dates": "2016 - 2020",
+                    "details": "Details B",
+                }
+            ],
+            "projects": [],
+            "research": [],
+            "skills": [{"category": "Languages", "items": ["Python"]}],
+            "certificates": [],
+            "languages": [],
+            "references": "Available on request",
+        }
+
+        for template_id in ["latex", "ats", "timeline", "modern"]:
+            with self.subTest(template_id=template_id):
+                # Without page breaks, document is 1 page
+                doc_normal = render_resume_document(resume, template_id=template_id)
+                self.assertEqual(len(doc_normal.pages), 1, f"Expected 1 page without breaks for {template_id}")
+
+                # With page break before education
+                resume_with_break = dict(resume, page_breaks=["education"])
+                doc_with_break = render_resume_document(resume_with_break, template_id=template_id)
+                self.assertEqual(
+                    len(doc_with_break.pages),
+                    2,
+                    f"Expected 2 pages with page break before education in {template_id}",
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

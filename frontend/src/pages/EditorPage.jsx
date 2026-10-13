@@ -31,6 +31,7 @@ const EMPTY_RESUME = {
     'languages',
     'references',
   ],
+  page_breaks: [],
 };
 
 const FALLBACK_TEMPLATES = [

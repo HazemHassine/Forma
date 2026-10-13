@@ -100,11 +100,18 @@ def render_resume_document(
     else:
         section_order = list(DEFAULT_SECTION_ORDER)
 
+    raw_breaks = resume_data.get("page_breaks")
+    if isinstance(raw_breaks, list):
+        page_breaks = [s for s in raw_breaks if isinstance(s, str)]
+    else:
+        page_breaks = []
+
     html_content = template.render(
         resume=resume_data,
         photo_uri=photo_uri,
         template_id=selected_template,
         section_order=section_order,
+        page_breaks=page_breaks,
     )
 
     # Use base_url so relative resources resolve correctly
