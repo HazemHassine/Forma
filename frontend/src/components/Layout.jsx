@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { PenLine, Layers, Briefcase, Target, Mail, Command, Building2, Bot, Database, CircleAlert, SearchCheck, Sparkles } from 'lucide-react';
+import { PenLine, Layers, Briefcase, Target, Mail, Command, Building2, Bot, Database, CircleAlert, SearchCheck, Sparkles, Home, RefreshCw } from 'lucide-react';
 import { useAIProvider } from '../App';
 import { systemApi } from '../api';
 import './Layout.css';
@@ -10,14 +10,38 @@ export default function Layout({ children }) {
   const [systemStatus, setSystemStatus] = useState(null);
   const [statusError, setStatusError] = useState(false);
 
-  useEffect(() => {
-    systemApi.status()
+  const [checking, setChecking] = useState(false);
+
+  const checkStatus = useCallback(() => {
+    setChecking(true);
+    return systemApi.status()
       .then(status => {
-        setSystemStatus(status);
+        setSystemStatus(previous => {
+          // The database came back: reload so every page fetches real data.
+          if (previous?.database_status === 'unavailable' && status.database_status === 'connected') {
+            window.location.reload();
+          }
+          return status;
+        });
         setStatusError(false);
       })
-      .catch(() => setStatusError(true));
+      .catch(() => setStatusError(true))
+      .finally(() => setChecking(false));
   }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    checkStatus();
+  }, [checkStatus]);
+
+  const databaseDown = systemStatus?.database_status === 'unavailable';
+
+  useEffect(() => {
+    // While something is wrong, keep checking so recovery needs no restart.
+    if (!databaseDown && !statusError) return undefined;
+    const timer = window.setInterval(checkStatus, 30000);
+    return () => window.clearInterval(timer);
+  }, [databaseDown, statusError, checkStatus]);
 
   const selectedAI = systemStatus?.ai?.[aiProvider];
 
@@ -33,7 +57,11 @@ export default function Layout({ children }) {
           </div>
         </div>
         <nav className="sidebar-nav">
-          <div className="sidebar-nav-label">Create</div>
+          <NavLink to="/" end aria-label="Home" title="Home" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+            <span className="sidebar-link-icon"><Home size={16} /></span>
+            <span><strong>Home</strong></span>
+          </NavLink>
+          <div className="sidebar-nav-label sidebar-nav-label-spaced">Create</div>
           <NavLink to="/editor" aria-label="Resume" title="Resume" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
             <span className="sidebar-link-icon"><PenLine size={16} /></span>
             <span><strong>Resume</strong></span>
@@ -69,11 +97,13 @@ export default function Layout({ children }) {
           </NavLink>
         </nav>
         <div className="sidebar-footer">
-          <div className={`system-status ${statusError ? 'error' : ''}`}>
-            {statusError ? <CircleAlert size={14} /> : <Database size={14} />}
+          <div className={`system-status ${statusError || databaseDown ? 'error' : ''}`}>
+            {statusError || databaseDown ? <CircleAlert size={14} /> : <Database size={14} />}
             <span>
               {statusError
                 ? 'Backend unavailable'
+                : databaseDown
+                  ? `${systemStatus.database === 'supabase' ? 'Supabase' : 'Database'} unreachable`
                 : systemStatus
                   ? `${systemStatus.database === 'supabase' ? 'Supabase' : 'Local data'} connected`
                   : 'Checking backend…'}
@@ -102,7 +132,27 @@ export default function Layout({ children }) {
         </div>
       </aside>
       <main className="layout-main">
-        {children}
+        {(databaseDown || statusError) && (
+          <div className="system-banner" role="alert">
+            <CircleAlert size={18} />
+            <div>
+              <strong>
+                {statusError ? 'Forma cannot reach its backend' : 'Your data is not reachable right now'}
+              </strong>
+              <p>
+                {statusError
+                  ? 'Check that the backend is running (docker compose ps, then docker compose logs backend).'
+                  : systemStatus.database_error}
+              </p>
+            </div>
+            <button type="button" onClick={checkStatus} disabled={checking}>
+              <RefreshCw size={13} className={checking ? 'spinning' : ''} /> {checking ? 'Checking…' : 'Check again'}
+            </button>
+          </div>
+        )}
+        <div className="layout-content">
+          {children}
+        </div>
       </main>
     </div>
   );

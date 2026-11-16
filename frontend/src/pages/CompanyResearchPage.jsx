@@ -6,7 +6,9 @@ import {
   Plus, RefreshCw, Search, ShieldCheck, Sparkles, Target, Trash2, TrendingUp,
   Users,
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { companyResearchApi } from '../api';
+import { readHandoff } from '../jobs';
 import { useAIProvider, useToast } from '../App';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -634,12 +636,20 @@ function CompanyReport({ entity }) {
 export default function CompanyResearchPage() {
   const addToast = useToast();
   const { aiProvider } = useAIProvider();
+  const location = useLocation();
   const [reports, setReports] = useState([]);
   const [loadingLibrary, setLoadingLibrary] = useState(true);
   const [libraryError, setLibraryError] = useState('');
   const [historyQuery, setHistoryQuery] = useState('');
   const [showNewResearch, setShowNewResearch] = useState(true);
-  const [form, setForm] = useState(EMPTY_FORM);
+  // Arriving from an application fills the request in; nothing runs until
+  // the user starts the research.
+  const [form, setForm] = useState(() => {
+    const handoff = readHandoff(location);
+    return handoff
+      ? { ...EMPTY_FORM, company: handoff.company, role: handoff.position, job_context: handoff.job_description.slice(0, 20000) }
+      : EMPTY_FORM;
+  });
   const [researching, setResearching] = useState(false);
   const [researchError, setResearchError] = useState('');
   const [progressIndex, setProgressIndex] = useState(0);

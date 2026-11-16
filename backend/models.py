@@ -153,24 +153,46 @@ class ResumeTemplateOption(BaseModel):
     accent: str
 
 
+class JobStatus(str, Enum):
+    saved = "saved"
+    applied = "applied"
+    interviewing = "interviewing"
+    offer = "offer"
+    rejected = "rejected"
+    ghosted = "ghosted"
+    withdrawn = "withdrawn"
+
+
 class JobApplicationCreate(BaseModel):
     company: str
     position: str
     url: Optional[str] = None
-    status: str = "applied"
+    status: JobStatus = JobStatus.applied
     resume_version_id: Optional[int] = None
     applied_at: Optional[date] = None
     notes: Optional[str] = None
+    job_description: Optional[str] = None
+    location: Optional[str] = None
+    salary: Optional[str] = None
+    contact: Optional[str] = None
+    next_step: Optional[str] = None
+    follow_up_at: Optional[date] = None
 
 
 class JobApplicationUpdate(BaseModel):
     company: Optional[str] = None
     position: Optional[str] = None
     url: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[JobStatus] = None
     resume_version_id: Optional[int] = None
     applied_at: Optional[date] = None
     notes: Optional[str] = None
+    job_description: Optional[str] = None
+    location: Optional[str] = None
+    salary: Optional[str] = None
+    contact: Optional[str] = None
+    next_step: Optional[str] = None
+    follow_up_at: Optional[date] = None
 
 
 class JobApplication(BaseModel):
@@ -184,6 +206,33 @@ class JobApplication(BaseModel):
     applied_at: str
     notes: Optional[str] = None
     updated_at: Optional[str] = None
+    job_description: Optional[str] = None
+    location: Optional[str] = None
+    salary: Optional[str] = None
+    contact: Optional[str] = None
+    next_step: Optional[str] = None
+    follow_up_at: Optional[str] = None
+    status_changed_at: Optional[str] = None
+    # Derived: whether saved material exists for the same company.
+    has_cover_letter: bool = False
+    has_research: bool = False
+
+
+class JobBulkStatusRequest(BaseModel):
+    ids: list[int] = Field(min_length=1, max_length=500)
+    status: JobStatus
+
+
+class JobEventCreate(BaseModel):
+    detail: str = Field(min_length=1, max_length=4000)
+
+
+class JobEvent(BaseModel):
+    id: int
+    job_id: int
+    kind: str
+    detail: Optional[str] = None
+    created_at: str
 
 
 class AISuggestRequest(BaseModel):

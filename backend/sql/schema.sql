@@ -21,6 +21,21 @@ CREATE TABLE IF NOT EXISTS job_applications (
     FOREIGN KEY (resume_version_id) REFERENCES resume_versions(id)
 );
 
+-- Later job_applications columns (job_description, follow_up_at, ...) are
+-- added by database.init_db so existing databases are upgraded in place.
+
+CREATE TABLE IF NOT EXISTS job_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    detail TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (job_id) REFERENCES job_applications(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_job_events_job
+ON job_events (job_id, id DESC);
+
 CREATE TABLE IF NOT EXISTS cover_letters (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     resume_version_id INTEGER NOT NULL,

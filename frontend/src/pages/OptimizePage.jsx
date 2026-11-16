@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { resumeApi, aiApi } from '../api';
+import { resumeApi, aiApi, jobApi } from '../api';
 import { useAIProvider, useToast } from '../App';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { readHandoff } from '../jobs';
 import { Target, Sparkles, Check, X, Loader, MessageSquare, Send, ChevronRight, FileText, ArrowRight, ShieldCheck, Save, Clock3 } from 'lucide-react';
 import Button from '../components/Button';
 import { diffWords } from 'diff';
@@ -109,12 +110,16 @@ export default function OptimizePage() {
   const addToast = useToast();
   const { aiProvider } = useAIProvider();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [versions, setVersions] = useState([]);
   const [selectedVersionId, setSelectedVersionId] = useState(null);
-  const [jobDescription, setJobDescription] = useState('');
-  const [targetRole, setTargetRole] = useState('');
-  const [company, setCompany] = useState('');
+  // Arriving from an application fills the brief in and remembers which
+  // application the tailored version belongs to.
+  const [handoff] = useState(() => readHandoff(location));
+  const [jobDescription, setJobDescription] = useState(handoff?.job_description || '');
+  const [targetRole, setTargetRole] = useState(handoff?.position || '');
+  const [company, setCompany] = useState(handoff?.company || '');
   const [instructions, setInstructions] = useState('');
   const [includeContext, setIncludeContext] = useState(true);
 
@@ -146,7 +151,9 @@ export default function OptimizePage() {
 
   useEffect(() => {
     const saved = localStorage.getItem('activeTailoringDraft');
-    if (!saved) return;
+    // A fresh request from an application wins over an older unfinished draft,
+    // which stays recoverable from Versions.
+    if (!saved || handoff) return;
     try {
       const session = JSON.parse(saved);
       Promise.all([
@@ -165,7 +172,7 @@ export default function OptimizePage() {
     } catch {
       localStorage.removeItem('activeTailoringDraft');
     }
-  }, [addToast]);
+  }, [addToast, handoff]);
 
   const handleOptimize = async () => {
     if (!selectedVersionId) return addToast('Select a version', 'warning');
@@ -228,6 +235,7 @@ export default function OptimizePage() {
         sourceVersionId: selectedVersionId,
         jobDescription,
         finalName: proposedName,
+        jobId: handoff?.id ?? null,
       }));
       addToast('Tailored draft created. Your source version is unchanged.', 'success');
     } catch (err) {
@@ -297,8 +305,26 @@ export default function OptimizePage() {
     setProcessingDraft(true);
     try {
       await resumeApi.update(draftVersionId, { name: draftName });
+      let linkedJobId = handoff?.id ?? null;
+      try {
+        linkedJobId ??= JSON.parse(localStorage.getItem('activeTailoringDraft') || '{}').jobId ?? null;
+      } catch {
+        linkedJobId = handoff?.id ?? null;
+      }
       localStorage.removeItem('activeTailoringDraft');
-      addToast('Saved as a new resume version. Your source is unchanged.', 'success');
+      let linked = false;
+      if (linkedJobId) {
+        // Record on the application which resume was written for it.
+        linked = await jobApi.update(linkedJobId, { resume_version_id: draftVersionId })
+          .then(() => true)
+          .catch(() => false);
+      }
+      addToast(
+        linked
+          ? `Saved as a new version and linked to your ${company || 'application'}.`
+          : 'Saved as a new resume version. Your source is unchanged.',
+        'success',
+      );
       navigate(`/editor/${draftVersionId}`);
     } catch {
       addToast('Failed to accept draft.', 'error');

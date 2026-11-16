@@ -8,9 +8,11 @@ building cover letters, researching companies, and tracking job applications.
 - **Candidate Context Vault**: Ingest massive career dumps, GitHub/portfolio links, and notes. Distill them into structured, verifiable knowledge cards with category chips, tag search, and prompt token density estimation.
 - **App-Wide Context Intelligence**: Connects the Context Vault to CV Critique, Resume Tailoring, Section Suggestions, and Cover Letters, ensuring AI outputs draw upon verified background facts and scale metrics rather than generic boilerplate.
 - **Resume Review & Critique**: Objective AI audits of your CV for passive voice, lack of quantifiability, buzzwords, and structure, automatically surfacing unmined achievements from your Context Vault.
+- **Home dashboard**: what needs attention today (follow-ups due, applications that have gone quiet), saved roles ready to apply, weekly activity, and response rates.
+- **Applications as the hub**: each application keeps its job post, location, salary, contact, next step, follow-up date, and an activity log. Tailoring, the cover letter, critique, and company research open pre-filled from it, and an accepted tailored résumé is linked back to the application.
 - Section-by-section résumé editor with PDF preview and export
 - Version history and per-application résumé tracking
-- Job application pipeline with statuses, notes, links, and dates
+- Job application pipeline from *saved* through *offer*, with search, status filters, and one-click close-out of applications that never got a reply
 - AI-assisted résumé tailoring with diff visualization and evidence mapping
 - Multi-step cover-letter analysis, company research, clarification, drafting,
   editing, and PDF export
@@ -320,6 +322,9 @@ docker compose logs backend
 curl http://localhost:8001/health
 ```
 
+- A banner saying the Supabase database is not running means the project is
+  paused: free projects pause after about a week without activity. Restore it
+  in the Supabase dashboard; Forma keeps running and reconnects on its own.
 - A schema error means `supabase/schema.sql` has not been run, or needs to be
   run again after an update.
 - A connection timeout commonly means the IPv6 direct URI was used on an

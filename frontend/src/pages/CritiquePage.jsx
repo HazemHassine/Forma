@@ -13,7 +13,9 @@ import {
   Briefcase,
   Sparkles,
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { resumeApi, critiqueApi, formatApiError } from '../api';
+import { readHandoff } from '../jobs';
 import { useToast, useAIProvider } from '../App';
 import Button from '../components/Button';
 import './CritiquePage.css';
@@ -22,12 +24,15 @@ export default function CritiquePage() {
   const addToast = useToast();
   const { aiProvider } = useAIProvider();
 
+  const location = useLocation();
   const [versions, setVersions] = useState([]);
   const [selectedVersionId, setSelectedVersionId] = useState(null);
   const [includeContext, setIncludeContext] = useState(true);
-  const [targetRole, setTargetRole] = useState('');
-  const [jobDescription, setJobDescription] = useState('');
-  const [showRoleInputs, setShowRoleInputs] = useState(false);
+  // Arriving from an application reviews the resume against that job post.
+  const [handoff] = useState(() => readHandoff(location));
+  const [targetRole, setTargetRole] = useState(handoff?.position || '');
+  const [jobDescription, setJobDescription] = useState(handoff?.job_description || '');
+  const [showRoleInputs, setShowRoleInputs] = useState(Boolean(handoff));
 
 
   const [analyzing, setAnalyzing] = useState(false);

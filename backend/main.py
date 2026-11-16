@@ -1,6 +1,8 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
@@ -10,11 +12,12 @@ load_dotenv(dotenv_path=backend_env_path, override=False)
 
 from config import STATIC_DIR, ensure_data_layout
 from database import (
+    DatabaseUnavailable,
     database_backend,
+    database_error,
+    ensure_schema,
     get_db,
-    init_db,
     migrate_legacy_database,
-    seed_initial_resume,
 )
 from routers import resumes, jobs, photos
 from routers.ai import router as ai_router
@@ -29,8 +32,9 @@ async def lifespan(app: FastAPI):
     """Initialize database and seed data on startup."""
     ensure_data_layout()
     migrate_legacy_database()
-    init_db()
-    seed_initial_resume()
+    # A database that is down (for example a paused Supabase project) must not
+    # stop the server: the UI needs to come up to explain what is wrong.
+    ensure_schema()
     yield
 
 
@@ -50,6 +54,37 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def finish_startup_when_database_returns(request: Request, call_next):
+    """Complete skipped startup migrations once the database is reachable."""
+    if request.url.path.startswith("/api/"):
+        await run_in_threadpool(ensure_schema)
+    return await call_next(request)
+
+
+@app.exception_handler(DatabaseUnavailable)
+async def database_unavailable_handler(request: Request, exc: DatabaseUnavailable):
+    return JSONResponse(status_code=503, content={"detail": str(exc)})
+
+
+def _database_state() -> dict:
+    """Probe the database without raising, for health and status endpoints."""
+    try:
+        conn = get_db()
+        try:
+            conn.execute("SELECT 1 AS ok").fetchone()
+        finally:
+            conn.close()
+    except DatabaseUnavailable as exc:
+        return {"database_status": "unavailable", "database_error": str(exc)}
+    if not ensure_schema():
+        return {
+            "database_status": "unavailable",
+            "database_error": database_error() or "The database is not ready yet.",
+        }
+    return {"database_status": "connected", "database_error": None}
+
 
 # Mount private, persistent user assets.
 ensure_data_layout()
@@ -76,25 +111,24 @@ async def root():
 
 
 @app.get("/health")
-async def health():
-    conn = get_db()
-    try:
-        conn.execute("SELECT 1 AS ok").fetchone()
-    finally:
-        conn.close()
-    return {"status": "healthy", "database": database_backend()}
+def health():
+    # Always 200 while the process is up: Docker starts the frontend only when
+    # this passes, and the frontend is what explains a database problem.
+    state = _database_state()
+    return {
+        "status": "healthy" if state["database_status"] == "connected" else "degraded",
+        "database": database_backend(),
+        **state,
+    }
 
 
 @app.get("/api/system/status")
-async def system_status():
-    conn = get_db()
-    try:
-        conn.execute("SELECT 1 AS ok").fetchone()
-    finally:
-        conn.close()
+def system_status():
+    state = _database_state()
     return {
-        "status": "ready",
+        "status": "ready" if state["database_status"] == "connected" else "degraded",
         "database": database_backend(),
+        **state,
         "ai": {
             "gemini": {
                 "configured": bool(os.getenv("GEMINI_API_KEY")),

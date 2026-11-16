@@ -76,7 +76,6 @@ test('toggling and managing page breaks between sections', () => {
   assert.deepEqual(pageBreaks, ['skills']);
 
   // Removing a section also cleans up its page break
-  const removedSection = 'skills';
-  pageBreaks = pageBreaks.filter(id => id !== removedSection);
+  removeBreak('skills');
   assert.deepEqual(pageBreaks, []);
 });

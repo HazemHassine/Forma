@@ -174,3 +174,30 @@
   .sidebar-link { justify-content: center; padding: 12px; }
   .sidebar-link.active::before { left: -10px; }
 }
+
+/* Page area. Pages size themselves with height: 100% inside this box. */
+.layout-content { flex: 1; min-height: 0; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+
+.system-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 22px;
+  background: #fdf3e7;
+  border-bottom: 1px solid #f0d9b8;
+  color: #6f4a0c;
+  flex-shrink: 0;
+}
+.system-banner > svg { flex-shrink: 0; margin-top: 2px; color: var(--warning); }
+.system-banner > div { flex: 1; min-width: 0; }
+.system-banner strong { display: block; font-size: var(--font-body); font-weight: 650; color: #523605; }
+.system-banner p { font-size: var(--font-small); line-height: 1.5; max-width: 900px; }
+.system-banner button {
+  display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0;
+  border: 1px solid #e3c594; background: #fff; color: #523605;
+  border-radius: var(--radius-sm); padding: 6px 11px; font-size: var(--font-small); font-weight: 560; cursor: pointer;
+}
+.system-banner button:hover:not(:disabled) { background: #fffaf2; }
+.system-banner button:disabled { opacity: .7; cursor: default; }
+.system-banner .spinning { animation: system-banner-spin 1s linear infinite; }
+@keyframes system-banner-spin { to { transform: rotate(360deg); } }
