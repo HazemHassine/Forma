@@ -24,7 +24,33 @@ test('an empty resume selection is sent as null', () => {
     resume_version_id: null,
     notes: null,
     applied_at: '2026-07-28',
+    job_description: null,
+    location: null,
+    salary: null,
+    contact: null,
+    next_step: null,
+    follow_up_at: null,
   });
+});
+
+test('the job post and follow-up date are trimmed and sent', () => {
+  const payload = buildJobPayload({
+    company: 'Example GmbH',
+    position: 'Engineer',
+    url: '',
+    status: 'saved',
+    resume_version_id: '',
+    notes: '',
+    applied_at: '',
+    job_description: '  Build agents.\n',
+    location: ' Berlin ',
+    follow_up_at: '2026-08-04',
+  });
+
+  assert.equal(payload.job_description, 'Build agents.');
+  assert.equal(payload.location, 'Berlin');
+  assert.equal(payload.follow_up_at, '2026-08-04');
+  assert.equal(payload.applied_at, null);
 });
 
 test('a selected resume is sent as a number', () => {

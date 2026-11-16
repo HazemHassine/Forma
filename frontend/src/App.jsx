@@ -1,6 +1,7 @@
 import { useState, createContext, useContext, useCallback } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import DashboardPage from './pages/DashboardPage';
 import EditorPage from './pages/EditorPage';
 import VersionsPage from './pages/VersionsPage';
 import JobsPage from './pages/JobsPage';
@@ -74,7 +75,7 @@ function App() {
       <AIProviderContext.Provider value={{ aiProvider, setAIProvider }}>
         <Layout>
           <Routes>
-            <Route path="/" element={<Navigate to="/editor" replace />} />
+            <Route path="/" element={<DashboardPage />} />
             <Route path="/editor" element={<EditorPage />} />
             <Route path="/editor/:id" element={<EditorPage />} />
             <Route path="/versions" element={<VersionsPage />} />
@@ -84,6 +85,7 @@ function App() {
             <Route path="/company-research" element={<CompanyResearchPage />} />
             <Route path="/critique" element={<CritiquePage />} />
             <Route path="/context" element={<ContextPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
         <Toast toasts={toasts} onRemove={removeToast} />

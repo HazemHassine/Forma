@@ -5,7 +5,9 @@ import {
   Link2, ListChecks, Loader, Mail, MessageSquare, Plus, Save, Search,
   ShieldCheck, Sparkles, Target, Trash2,
 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { coverLetterApi, resumeApi } from '../api';
+import { readHandoff } from '../jobs';
 import { useAIProvider, useToast } from '../App';
 import Button from '../components/Button';
 import Modal from '../components/Modal';
@@ -312,12 +314,23 @@ function DraftDecisionSummary({ context }) {
 export default function CoverLettersPage() {
   const addToast = useToast();
   const { aiProvider } = useAIProvider();
+  const location = useLocation();
   const [letters, setLetters] = useState([]);
   const [versions, setVersions] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showCreate, setShowCreate] = useState(false);
+  // Arriving from an application opens the wizard with its job post filled in.
+  const [handoff] = useState(() => readHandoff(location));
+  const [showCreate, setShowCreate] = useState(Boolean(handoff));
   const [selected, setSelected] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(() => (handoff
+    ? {
+      ...EMPTY_FORM,
+      company: handoff.company,
+      position: handoff.position,
+      source_url: handoff.url,
+      job_post: handoff.job_description,
+    }
+    : EMPTY_FORM));
   const [previewKey, setPreviewKey] = useState(0);
   const [saving, setSaving] = useState(false);
   const [deleteLetter, setDeleteLetter] = useState(null);

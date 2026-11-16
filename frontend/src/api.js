@@ -117,6 +117,10 @@ export const jobApi = {
   update: (id, data) => request(`/jobs/${id}`, { method: 'PUT', body: data }),
   delete: (id) => request(`/jobs/${id}`, { method: 'DELETE' }),
   stats: () => request('/jobs/stats'),
+  overview: () => request('/jobs/overview'),
+  bulkStatus: (ids, status) => request('/jobs/bulk-status', { method: 'POST', body: { ids, status } }),
+  events: (id) => request(`/jobs/${id}/events`),
+  addNote: (id, detail) => request(`/jobs/${id}/events`, { method: 'POST', body: { detail } }),
 };
 
 // AI endpoints
